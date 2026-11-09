@@ -1,0 +1,69 @@
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { Card, Empty, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
+import { useApp } from '@/data/AppContext';
+import { formatBRL } from '@/engine/money';
+import { totalPotentialSavings } from '@/engine/tips';
+import type { Tip, TipSeverity } from '@/engine/types';
+import { useTheme } from '@/theme';
+
+export default function Dicas() {
+  const t = useTheme();
+  const { tips, month, setMonth, transactions } = useApp();
+  const [open, setOpen] = useState<string | null>(null);
+  const total = totalPotentialSavings(tips);
+
+  const color: Record<TipSeverity, string> = { alerta: t.over, atencao: t.warning, info: t.info, positivo: t.ok };
+  const icon: Record<TipSeverity, string> = { alerta: 'alert-circle', atencao: 'warning', info: 'information-circle', positivo: 'checkmark-circle' };
+
+  return (
+    <Screen>
+      <MonthSwitcher month={month} onChange={setMonth} />
+
+      {transactions.length === 0 ? (
+        <Empty icon="bulb-outline" title="Sem dicas ainda" text="Lance ou importe seus gastos e eu mostro onde dá para economizar." />
+      ) : (
+        <>
+          {total > 0 ? (
+            <Card style={{ backgroundColor: t.primary, borderColor: t.primary }}>
+              <Txt variant="muted" color={t.primaryText}>Seguindo os planos abaixo você libera até</Txt>
+              <Txt variant="big" color={t.primaryText}>{formatBRL(total)}/mês</Txt>
+              <Txt variant="small" color={t.primaryText}>{formatBRL(total * 12)} por ano para a reserva e seus objetivos.</Txt>
+            </Card>
+          ) : null}
+
+          {tips.map((tip: Tip) => {
+            const expanded = open === tip.id;
+            return (
+              <Pressable key={tip.id} onPress={() => setOpen(expanded ? null : tip.id)} accessibilityRole="button" aria-expanded={expanded}>
+                <Card style={{ borderLeftWidth: 4, borderLeftColor: color[tip.severity] }}>
+                  <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                    <Icon name={icon[tip.severity]} color={color[tip.severity]} />
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Txt style={{ fontWeight: '700' }}>{tip.title}</Txt>
+                      <Txt variant="muted">{tip.message}</Txt>
+                      {tip.savingsCents > 0 ? <Txt variant="small" color={t.primary} style={{ fontWeight: '700' }}>Economia possível: {formatBRL(tip.savingsCents)}/mês</Txt> : null}
+                    </View>
+                    <Icon name={expanded ? 'chevron-up' : 'chevron-down'} color={t.muted} size={18} />
+                  </View>
+                  {expanded ? (
+                    <View style={{ gap: 8, paddingTop: 4 }}>
+                      <Txt variant="small" style={{ fontWeight: '700' }}>PLANO DE MELHORIA</Txt>
+                      {tip.steps.map((s, i) => (
+                        <View key={i} style={{ flexDirection: 'row', gap: 8 }}>
+                          <Txt color={t.primary} style={{ fontWeight: '700' }}>{i + 1}.</Txt>
+                          <Txt style={{ flex: 1 }}>{s}</Txt>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </Card>
+              </Pressable>
+            );
+          })}
+          {tips.length === 0 ? <Txt variant="muted">Sem alertas neste mês. Continue assim!</Txt> : null}
+        </>
+      )}
+    </Screen>
+  );
+}
