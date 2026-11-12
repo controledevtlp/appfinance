@@ -17,13 +17,16 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 ### Como os cálculos funcionam (`src/engine`)
 - **Regra 50/30/20** sobre a renda líquida: 50% necessidades, 30% desejos, 20% poupança. Cada categoria tem um % ideal (ver `categories.ts`) e você pode sobrescrever o limite.
 - **Taxa de poupança** = (renda − gastos de necessidades e desejos) ÷ renda. Meta: 20%.
-- **Reserva de emergência**: meta = 6 × custo médio mensal de necessidades.
+- **Reserva de emergência**: meta = 6 × custo médio mensal de necessidades, calculado só com **meses completos** (o mês em andamento ficaria baixo porque as contas ainda não venceram). Sem histórico, estima por 50% da renda.
 - **Nota de saúde** (100 pts): poupança 40 · dívidas 20 · categorias no limite 25 · reserva 15.
-- **Plano de redução**: para cada categoria acima do ideal, o corte é dividido em 3 meses (⅓, ⅔, total) + ações práticas da categoria.
-- No mês em andamento a nota é marcada como parcial e a taxa de poupança não é elogiada até o mês fechar (as contas ainda não venceram).
+- **Plano de redução**: para gasto variável (mercado, delivery, lazer, compras…) o corte é dividido em 3 meses (⅓, ⅔, total). Para **custo fixo** (moradia, contas, saúde, educação, dívidas) não faz sentido "cortar um terço em 30 dias", então o plano é renegociar — ver `FIXED_COST_CATEGORIES`.
+- **Projeção do mês**: custo fixo entra uma vez só (o que já venceu, ou o total do mês passado se ainda falta vencer) e só o gasto variável segue o ritmo diário. Extrapolar tudo por dia contaria o aluguel várias vezes.
+- **Comparação com o mês anterior**: compara o mesmo pedaço do mês (dia 1 até hoje), não o mês inteiro rateado — assim uma assinatura cobrada todo dia 5 não vira "aumento" no dia 12.
+- No mês em andamento a nota aparece como parcial e a taxa de poupança não é elogiada até o mês fechar.
 - Excessos menores que R$ 20 não geram dica.
+- A soma "você libera até X/mês" não conta duas vezes: juros que já estão numa categoria estourada entram uma vez só.
 
-Todo o motor é TypeScript puro e testado: `npm test`.
+Todo o motor é TypeScript puro e testado: `npm test` (38 testes).
 
 ## Rodar no computador
 
@@ -66,7 +69,7 @@ Defina as variáveis do Supabase no build (`eas env:create` ou no painel da Expo
 Sem a conta, dá para usar o app no iPhone pelo **Expo Go**.
 
 ## Notificações
-São **locais** (agendadas no próprio aparelho, sem servidor): alerta quando uma categoria chega a 80% e quando estoura o limite, resumo semanal (domingo 19h) e lembrete diário opcional (20h30). A permissão é pedida na primeira vez. Funcionam no APK; no Expo Go algumas plataformas limitam notificações.
+São **locais** (agendadas no próprio aparelho, sem servidor): alerta quando uma categoria chega a 80% e quando estoura o limite, resumo semanal (domingo 19h) e lembrete diário opcional (20h30). A permissão é pedida na primeira vez. Funcionam tanto no APK quanto no Expo Go — o Expo Go só não suporta notificações *push* (remotas), que este app não usa.
 
 ## Importar extrato
 No app/internet banking, exporte o extrato em **CSV ou OFX** (ou a fatura do cartão) e escolha o arquivo em *Importar extrato*.

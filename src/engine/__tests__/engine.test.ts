@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMonthSummary, emergencyStatus, monthlySeries } from '../budget';
+import { computeMonthSummary, emergencyStatus, essentialMonthlyCost, monthlySeries } from '../budget';
 import { categorize } from '../categorizer';
 import { shiftMonth, parseDateToISO } from '../dates';
 import { buildDemoTransactions, DEMO_SETTINGS } from '../demo';
@@ -150,8 +150,9 @@ describe('orçamento', () => {
     const s2 = computeMonthSummary(txs, '2026-11', { ...settings, budgetOverrides: { delivery: 100000 } }, NOW);
     expect(s2.categories.find((c) => c.category.id === 'delivery')!.status).toBe('ok');
   });
-  it('projeta o gasto do mês corrente', () => {
-    expect(s.projectedExpenseCents).toBe(Math.round((208000 / 20) * 30));
+  it('projeta o gasto do mês corrente sem repetir conta fixa', () => {
+    // Fixo já pago (aluguel 1000) entra uma vez; variável (mercado 480 + iFood 600) segue o ritmo diário.
+    expect(s.projectedExpenseCents).toBe(100000 + Math.round((108000 / 20) * 30));
     expect(computeMonthSummary(txs, '2026-10', settings, NOW).projectedExpenseCents).toBeNull();
   });
   it('usa a renda lançada quando a renda declarada é zero', () => {
@@ -164,10 +165,11 @@ describe('orçamento', () => {
     expect(series[2]).toMatchObject({ incomeCents: 500000, expenseCents: 208000 });
   });
   it('calcula reserva de emergência', () => {
-    const r = emergencyStatus(txs, '2026-11', { ...settings, emergencyBalanceCents: 300000 });
-    expect(r.essentialCents).toBe(148000); // aluguel + mercado
-    expect(r.targetCents).toBe(888000);
-    expect(r.monthsCovered).toBeCloseTo(2.03, 1);
+    // Novembro é o mês em andamento aqui, então não serve de base: cai para 50% da renda declarada.
+    const r = emergencyStatus(txs, '2026-11', { ...settings, emergencyBalanceCents: 300000 }, NOW);
+    expect(r.essentialCents).toBe(250000);
+    expect(r.targetCents).toBe(1500000);
+    expect(r.monthsCovered).toBeCloseTo(1.2, 1);
   });
 });
 
@@ -191,7 +193,7 @@ describe('dicas', () => {
     expect(t.steps[2]).toContain('Mês 3');
   });
   it('detecta assinaturas recorrentes', () => {
-    expect(detectSubscriptions(txs, '2026-11').map((s) => s.name)).toEqual(['netflix', 'spotify']);
+    expect(detectSubscriptions(txs, '2026-11').map((s) => s.name)).toEqual(['Netflix', 'Spotify']);
     expect(tips.some((t) => t.id === 'assinaturas')).toBe(true);
   });
   it('alerta sobre juros e tarifas', () => {
@@ -244,5 +246,108 @@ describe('mês em andamento e materialidade', () => {
   it('mês fechado com boa poupança recebe elogio', () => {
     const closed = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-10', 'Aluguel', 900, 'moradia')];
     expect(generateTips(closed, '2026-10', settings, NOW).find((t) => t.id === 'poupanca')?.severity).toBe('positivo');
+  });
+});
+
+describe('correções de precisão', () => {
+  // Mês corrente incompleto puxava a média de custos essenciais para baixo e
+  // fazia a meta da reserva parecer menor do que é.
+  const txs = [
+    ...['2026-09', '2026-10'].flatMap((m) => [
+      tx(`${m}-10`, 'Aluguel', 1500, 'moradia'),
+      tx(`${m}-12`, 'Luz', 200, 'contas'),
+      tx(`${m}-15`, 'Mercado', 800, 'mercado'),
+    ]),
+    tx('2026-11-03', 'Mercado', 150, 'mercado'), // mês corrente, aluguel ainda não venceu
+  ];
+
+  it('ignora o mês em andamento no custo essencial', () => {
+    expect(essentialMonthlyCost(txs, '2026-11', settings, NOW)).toBe(250000); // média de set/out, não 150
+    expect(emergencyStatus(txs, '2026-11', settings, NOW).targetCents).toBe(1500000);
+  });
+
+  it('sem mês completo, estima pela renda base (declarada ou lançada)', () => {
+    const soCorrente = [tx('2026-11-03', 'Mercado', 150, 'mercado')];
+    expect(essentialMonthlyCost(soCorrente, '2026-11', settings, NOW)).toBe(250000); // 50% de 5000
+    const semDeclarada = [...soCorrente, tx('2026-11-05', 'Salário', 4000, 'salario', 'income')];
+    expect(essentialMonthlyCost(semDeclarada, '2026-11', DEFAULT_SETTINGS, NOW)).toBe(200000);
+  });
+
+  it('mostra o nome da assinatura como veio do extrato', () => {
+    const subs = detectSubscriptions(
+      ['2026-09', '2026-10'].flatMap((m) => [tx(`${m}-07`, 'Netflix.com', 55.9, 'assinaturas')]),
+      '2026-10',
+    );
+    expect(subs[0].name).toBe('Netflix.com');
+  });
+
+  it('promete o valor da assinatura mais barata, não a média', () => {
+    const assinaturas = ['2026-09', '2026-10'].flatMap((m) => [
+      tx(`${m}-07`, 'Netflix', 55.9, 'assinaturas'),
+      tx(`${m}-08`, 'Spotify', 21.9, 'assinaturas'),
+    ]);
+    const t = generateTips([tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), ...assinaturas], '2026-10', settings, NOW);
+    expect(t.find((x) => x.id === 'assinaturas')!.savingsCents).toBe(2190);
+  });
+
+  it('não conta juros duas vezes quando a categoria já está estourada', () => {
+    const base = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income')];
+    // Dívidas: limite 4% de 5000 = 200. Gasto 350, dos quais 150 são juros.
+    const estourado = generateTips([...base, tx('2026-10-10', 'Parcela', 200, 'dividas'), tx('2026-10-11', 'Juros rotativo', 150, 'dividas')], '2026-10', settings, NOW);
+    expect(estourado.find((x) => x.id === 'tarifas')!.savingsCents).toBe(0);
+    expect(estourado.find((x) => x.id === 'over:dividas')!.savingsCents).toBe(15000);
+    // Mesma tarifa numa categoria dentro do limite continua contando.
+    const dentro = generateTips([...base, tx('2026-10-11', 'Anuidade cartão', 40, 'outros')], '2026-10', settings, NOW);
+    expect(dentro.find((x) => x.id === 'tarifas')!.savingsCents).toBe(4000);
+  });
+
+  it('não manda cortar um terço do aluguel: custo fixo pede renegociação', () => {
+    const t = generateTips([tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-10', 'Aluguel', 1500, 'moradia')], '2026-10', settings, NOW);
+    const fixo = t.find((x) => x.id === 'over:moradia')!;
+    expect(fixo.steps[0]).toContain('custo fixo');
+    expect(fixo.steps.join(' ')).not.toContain('Mês 1');
+    // Gasto variável mantém o plano de 3 meses.
+    const variavel = generateTips([tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-11', 'iFood', 600, 'delivery')], '2026-10', settings, NOW);
+    expect(variavel.find((x) => x.id === 'over:delivery')!.steps[0]).toContain('Mês 1');
+  });
+});
+
+describe('projeção e comparação mês a mês', () => {
+  const salario = (m: string) => tx(`${m}-05`, 'Salário', 5000, 'salario', 'income');
+
+  it('antecipa a conta fixa que ainda não venceu, usando o mês anterior', () => {
+    const txs = [
+      salario('2026-10'),
+      tx('2026-10-10', 'Aluguel', 1200, 'moradia'),
+      salario('2026-11'),
+      tx('2026-11-02', 'Mercado', 300, 'mercado'), // dia 20: aluguel de novembro ainda não lançado
+    ];
+    const s = computeMonthSummary(txs, '2026-11', settings, NOW);
+    // 120000 (aluguel esperado) + 30000/20*30 (mercado no ritmo) = 165000
+    expect(s.projectedExpenseCents).toBe(120000 + Math.round((30000 / 20) * 30));
+  });
+
+  it('não acusa aumento quando a cobrança mensal apenas já caiu neste mês', () => {
+    const txs = [
+      salario('2026-10'),
+      tx('2026-10-05', 'Academia', 110, 'saude'),
+      tx('2026-10-25', 'Dentista', 400, 'saude'), // fora do período comparável (dia 25 > 20)
+      salario('2026-11'),
+      tx('2026-11-05', 'Academia', 110, 'saude'),
+    ];
+    expect(generateTips(txs, '2026-11', settings, NOW).some((t) => t.id === 'growth:saude')).toBe(false);
+  });
+
+  it('acusa aumento real no mesmo período', () => {
+    const txs = [
+      salario('2026-10'),
+      tx('2026-10-05', 'Mercado', 200, 'mercado'),
+      salario('2026-11'),
+      tx('2026-11-05', 'Mercado', 200, 'mercado'),
+      tx('2026-11-08', 'Mercado', 300, 'mercado'),
+    ];
+    const t = generateTips(txs, '2026-11', settings, NOW).find((x) => x.id === 'growth:mercado')!;
+    expect(t.savingsCents).toBe(30000);
+    expect(t.message).toContain('mesmo período');
   });
 });

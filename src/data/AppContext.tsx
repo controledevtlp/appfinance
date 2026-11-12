@@ -21,7 +21,6 @@ interface AppState {
   month: string;
   setMonth: (m: string) => void;
   summary: MonthSummary;
-  previous: MonthSummary;
   tips: Tip[];
   emergency: EmergencyStatus;
   health: HealthScore | null;
@@ -99,11 +98,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [sessionLoaded, userId, mode]);
 
   const summary = useMemo(() => computeMonthSummary(transactions, month, settings), [transactions, month, settings]);
-  const previous = useMemo(() => {
-    const [y, m] = month.split('-').map(Number);
-    const d = new Date(y, m - 2, 1);
-    return computeMonthSummary(transactions, `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, settings);
-  }, [transactions, month, settings]);
   const tips = useMemo(() => generateTips(transactions, month, settings), [transactions, month, settings]);
   const emergency = useMemo(() => emergencyStatus(transactions, month, settings), [transactions, month, settings]);
   const health = useMemo(() => healthScore(summary, emergency), [summary, emergency]);
@@ -176,7 +170,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     month,
     setMonth,
     summary,
-    previous,
     tips,
     emergency,
     health,

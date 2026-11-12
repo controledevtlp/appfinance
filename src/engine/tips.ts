@@ -1,5 +1,6 @@
 import { computeMonthSummary, emergencyStatus } from './budget';
-import { currentMonthKey, daysInMonth, monthKey, shiftMonth } from './dates';
+import { FIXED_COST_CATEGORIES } from './categories';
+import { currentMonthKey, monthKey, shiftMonth } from './dates';
 import { formatBRL } from './money';
 import type { MonthSummary, Settings, Tip, TipSeverity, Transaction } from './types';
 
@@ -74,6 +75,7 @@ function norm(s: string): string {
 }
 
 export interface Subscription {
+  /** Nome como aparece no extrato (o do lançamento mais recente). */
   name: string;
   monthlyCents: number;
 }
@@ -81,24 +83,29 @@ export interface Subscription {
 /** Assinaturas = gastos da categoria "assinaturas" que se repetem em 2+ meses com valor parecido. */
 export function detectSubscriptions(txs: Transaction[], endMonth: string): Subscription[] {
   const months = [endMonth, shiftMonth(endMonth, -1), shiftMonth(endMonth, -2)];
-  const byName = new Map<string, Map<string, number>>();
+  // Agrupa pelo nome normalizado, mas guarda o texto original para mostrar na tela.
+  const byName = new Map<string, { label: string; lastDate: string; perMonth: Map<string, number> }>();
   for (const t of txs) {
     if (t.type !== 'expense' || t.categoryId !== 'assinaturas') continue;
     const m = monthKey(t.date);
     if (!months.includes(m)) continue;
     const key = norm(t.description) || 'assinatura';
-    const inner = byName.get(key) ?? new Map<string, number>();
-    inner.set(m, (inner.get(m) ?? 0) + t.amountCents);
-    byName.set(key, inner);
+    const entry = byName.get(key) ?? { label: t.description, lastDate: t.date, perMonth: new Map<string, number>() };
+    if (t.date >= entry.lastDate) {
+      entry.label = t.description;
+      entry.lastDate = t.date;
+    }
+    entry.perMonth.set(m, (entry.perMonth.get(m) ?? 0) + t.amountCents);
+    byName.set(key, entry);
   }
   const out: Subscription[] = [];
-  for (const [name, perMonth] of byName) {
+  for (const { label, perMonth } of byName.values()) {
     if (perMonth.size < 2) continue;
     const values = [...perMonth.values()];
     const max = Math.max(...values);
     const min = Math.min(...values);
     if (min / max < 0.85) continue;
-    out.push({ name, monthlyCents: Math.round(values.reduce((a, b) => a + b, 0) / values.length) });
+    out.push({ name: label.trim(), monthlyCents: Math.round(values.reduce((a, b) => a + b, 0) / values.length) });
   }
   return out.sort((a, b) => b.monthlyCents - a.monthlyCents);
 }
@@ -110,7 +117,6 @@ export function generateTips(
   now: Date = new Date(),
 ): Tip[] {
   const summary: MonthSummary = computeMonthSummary(txs, month, settings, now);
-  const prev = computeMonthSummary(txs, shiftMonth(month, -1), settings, now);
   const tips: Tip[] = [];
   const base = summary.baseIncomeCents;
 
@@ -136,44 +142,63 @@ export function generateTips(
     flaggedOver.add(u.category.id);
     const third = Math.round(gap / 3);
     const pct = u.limitCents > 0 ? Math.round((u.spentCents / u.limitCents - 1) * 100) : 100;
+    const isFixed = FIXED_COST_CATEGORIES.has(u.category.id);
+    // Gasto variável dá para reduzir aos poucos; custo fixo só muda com renegociação.
+    const plan = isFixed
+      ? [
+          `Este é um custo fixo: não dá para cortar ${formatBRL(third)} no mês que vem sem mexer no contrato.`,
+          `O excesso é ${formatBRL(gap)} por mês — é o que você ganha renegociando ou trocando de plano.`,
+          'Enquanto isso não muda, compense com um teto menor nos gastos variáveis (delivery, compras, lazer).',
+        ]
+      : [
+          `Mês 1: corte ${formatBRL(third)} (um terço do excesso).`,
+          `Mês 2: corte mais ${formatBRL(third)}, somando ${formatBRL(third * 2)}.`,
+          `Mês 3: chegue ao ideal de ${formatBRL(u.limitCents)} (economia total de ${formatBRL(gap)}/mês).`,
+        ];
     tips.push({
       id: `over:${u.category.id}`,
       severity: u.ratio > 1.3 ? 'alerta' : 'atencao',
       categoryId: u.category.id,
       title: `${u.category.name}: ${pct}% acima do ideal`,
-      message: `Você gastou ${formatBRL(u.spentCents)} e o ideal para a sua renda é ${formatBRL(u.limitCents)}. Chegar ao ideal libera ${formatBRL(gap)} por mês.`,
+      message: isFixed
+        ? `Você gastou ${formatBRL(u.spentCents)} e o ideal para a sua renda é ${formatBRL(u.limitCents)}. Como é custo fixo, os ${formatBRL(gap)} de excesso só caem renegociando.`
+        : `Você gastou ${formatBRL(u.spentCents)} e o ideal para a sua renda é ${formatBRL(u.limitCents)}. Chegar ao ideal libera ${formatBRL(gap)} por mês.`,
       savingsCents: gap,
-      steps: [
-        `Mês 1: corte ${formatBRL(third)} (um terço do excesso).`,
-        `Mês 2: corte mais ${formatBRL(third)}, somando ${formatBRL(third * 2)}.`,
-        `Mês 3: chegue ao ideal de ${formatBRL(u.limitCents)} (economia total de ${formatBRL(gap)}/mês).`,
-        ...(ADVICE[u.category.id] ?? []),
-      ],
+      steps: [...plan, ...(ADVICE[u.category.id] ?? [])],
     });
   }
 
-  // 2) Crescimento forte em relação ao mês anterior (ajustado ao ritmo, se o mês não acabou).
-  const factor = month === currentMonthKey(now) ? now.getDate() / daysInMonth(month) : 1;
-  if (factor >= 0.33) {
-    for (const u of summary.categories) {
-      if (u.category.group === 'poupanca' || flaggedOver.has(u.category.id)) continue;
-      const before = prev.categories.find((c) => c.category.id === u.category.id)?.spentCents ?? 0;
-      const expected = before * factor;
-      const diff = u.spentCents - expected;
-      if (before > 0 && diff >= 5000 && u.spentCents >= expected * 1.25) {
-        tips.push({
-          id: `growth:${u.category.id}`,
-          severity: 'atencao',
-          categoryId: u.category.id,
-          title: `${u.category.name} subiu em relação ao mês passado`,
-          message: `Gasto de ${formatBRL(u.spentCents)} contra ${formatBRL(Math.round(expected))} esperados pelo mês anterior (+${formatBRL(Math.round(diff))}).`,
-          savingsCents: Math.round(diff),
-          steps: [
-            'Abra os lançamentos da categoria e veja o que mudou (compra única ou hábito novo).',
-            ...(ADVICE[u.category.id]?.slice(0, 2) ?? []),
-          ],
-        });
-      }
+  /*
+   * 2) Crescimento em relação ao mês anterior.
+   * Comparamos o mesmo pedaço do mês (dia 1 até hoje) em vez de ratear o total
+   * do mês passado: uma assinatura cobrada todo dia 5 não é "aumento" só porque
+   * hoje é dia 12 e o rateio esperava um terço dela.
+   */
+  const prevMonth = shiftMonth(month, -1);
+  const cutoffDay = month === currentMonthKey(now) ? now.getDate() : 31;
+  const samePeriod = new Map<string, number>();
+  for (const t of txs) {
+    if (t.type !== 'expense' || monthKey(t.date) !== prevMonth) continue;
+    if (Number(t.date.slice(8, 10)) > cutoffDay) continue;
+    samePeriod.set(t.categoryId, (samePeriod.get(t.categoryId) ?? 0) + t.amountCents);
+  }
+  for (const u of summary.categories) {
+    if (u.category.group === 'poupanca' || flaggedOver.has(u.category.id)) continue;
+    const before = samePeriod.get(u.category.id) ?? 0;
+    const diff = u.spentCents - before;
+    if (before > 0 && diff >= 5000 && u.spentCents >= before * 1.25) {
+      tips.push({
+        id: `growth:${u.category.id}`,
+        severity: 'atencao',
+        categoryId: u.category.id,
+        title: `${u.category.name} subiu em relação ao mês passado`,
+        message: `Gasto de ${formatBRL(u.spentCents)} contra ${formatBRL(before)} no mesmo período do mês passado (+${formatBRL(diff)}).`,
+        savingsCents: diff,
+        steps: [
+          'Abra os lançamentos da categoria e veja o que mudou (compra única ou hábito novo).',
+          ...(ADVICE[u.category.id]?.slice(0, 2) ?? []),
+        ],
+      });
     }
   }
 
@@ -181,14 +206,16 @@ export function generateTips(
   const subs = detectSubscriptions(txs, month);
   if (subs.length >= 2) {
     const total = subs.reduce((a, s) => a + s.monthlyCents, 0);
-    const cheapestToCut = Math.round(total / subs.length);
+    // Promessa conservadora: o mínimo garantido ao cancelar uma é o valor da mais barata.
+    const cheapest = Math.min(...subs.map((s) => s.monthlyCents));
+    const dearest = Math.max(...subs.map((s) => s.monthlyCents));
     tips.push({
       id: 'assinaturas',
       severity: 'info',
       categoryId: 'assinaturas',
       title: `${subs.length} assinaturas somam ${formatBRL(total)}/mês`,
-      message: `Cancelar só uma delas já economiza cerca de ${formatBRL(cheapestToCut)} por mês (${formatBRL(cheapestToCut * 12)} por ano).`,
-      savingsCents: cheapestToCut,
+      message: `São ${formatBRL(total * 12)} por ano. Cancelar uma economiza de ${formatBRL(cheapest)} a ${formatBRL(dearest)} por mês.`,
+      savingsCents: cheapest,
       steps: [
         ...subs.slice(0, 5).map((s) => `${s.name}: ${formatBRL(s.monthlyCents)}/mês`),
         ...ADVICE.assinaturas,
@@ -197,8 +224,11 @@ export function generateTips(
   }
 
   // 4) Juros e tarifas.
-  const fees = txs
-    .filter((t) => t.type === 'expense' && monthKey(t.date) === month && FEES_RE.test(t.description))
+  const feeTxs = txs.filter((t) => t.type === 'expense' && monthKey(t.date) === month && FEES_RE.test(t.description));
+  const fees = feeTxs.reduce((a, t) => a + t.amountCents, 0);
+  // O que já está num estouro de categoria não entra de novo na soma de economia.
+  const feesNotCounted = feeTxs
+    .filter((t) => !flaggedOver.has(t.categoryId))
     .reduce((a, t) => a + t.amountCents, 0);
   if (fees > 0) {
     tips.push({
@@ -206,7 +236,7 @@ export function generateTips(
       severity: 'alerta',
       title: `Você pagou ${formatBRL(fees)} em juros e tarifas`,
       message: 'Esse dinheiro não compra nada: dá para eliminar quase tudo com algumas ligações.',
-      savingsCents: fees,
+      savingsCents: feesNotCounted,
       steps: [
         'Pague a fatura do cartão sempre pelo valor total para fugir do rotativo.',
         'Peça isenção ou desconto na anuidade do cartão (ou troque por um sem anuidade).',
@@ -284,7 +314,7 @@ export function generateTips(
   }
 
   // 7) Reserva de emergência.
-  const reserve = emergencyStatus(txs, month, settings);
+  const reserve = emergencyStatus(txs, month, settings, now);
   if (reserve.essentialCents > 0) {
     if (reserve.monthsCovered < 3) {
       tips.push({

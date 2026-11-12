@@ -5,7 +5,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -185,8 +184,3 @@ export function useToggle(initial = false) {
   const [on, setOn] = useState(initial);
   return { on, open: () => setOn(true), close: () => setOn(false) };
 }
-
-export const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center' },
-  between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-});

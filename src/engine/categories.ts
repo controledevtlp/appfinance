@@ -40,6 +40,13 @@ export const GROUP_LABEL = {
   ignorar: 'Ignorados',
 } as const;
 
+/**
+ * Compromissos fixos: não dá para cortar de um mês para o outro (dependem de
+ * contrato, renegociação ou mudança de plano). O plano de melhoria dessas
+ * categorias é renegociar, não "cortar um terço por mês".
+ */
+export const FIXED_COST_CATEGORIES = new Set(['moradia', 'contas', 'saude', 'educacao', 'dividas']);
+
 export const GROUP_IDEAL_PCT = { necessidades: 50, desejos: 30, poupanca: 20 } as const;
 
 const BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
