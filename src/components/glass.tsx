@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, Ellipse, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { glassShadow, radius, useTheme } from '@/theme';
@@ -12,6 +12,24 @@ import { glassShadow, radius, useTheme } from '@/theme';
  * (gradiente radial). Isso dá o "borrão" bonito sem custo de desfoque real:
  * é um elemento só, desenhado uma vez, e não pesa na rolagem.
  */
+
+/*
+ * Quem já tem fundo desenhado por cima (o grupo de abas desenha uma vez só)
+ * avisa pelos filhos, para a tela não empilhar um segundo degradê. Dois
+ * fundos iguais em cima do outro fazem a troca de aba "piscar".
+ */
+const HasBackdrop = createContext(false);
+
+export function BackdropProvider({ children }: { children: ReactNode }) {
+  return (
+    <HasBackdrop.Provider value={true}>
+      <Backdrop />
+      {children}
+    </HasBackdrop.Provider>
+  );
+}
+
+export const useHasBackdrop = () => useContext(HasBackdrop);
 
 /** Fundo da tela: degradê + brilhos. Fica atrás de tudo. */
 export function Backdrop() {

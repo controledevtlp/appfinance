@@ -103,6 +103,14 @@ Entrada e saída de dinheiro têm cores próprias (menta e coral), porque ali a 
 
 Os dois temas são de vidro: escuro = branco a 5,5% sobre carvão esverdeado com acento sálvia claro; claro = branco translúcido sobre off-white esverdeado com acento verde-floresta (sálvia não tem contraste para texto em fundo claro). Tudo sai de `src/theme/index.ts`, inclusive a paleta dos gráficos.
 
+## Troca de abas
+Três coisas faziam a troca parecer cortada:
+- a transição das telas vem desligada por padrão (`animation: 'none'`) — agora é `shift` com 220ms;
+- cada tela desenhava o próprio fundo, então um degradê novo entrava junto com a tela e piscava. Agora o fundo é desenhado **uma vez só** no grupo de abas (`BackdropProvider`), e as telas consultam um contexto para não empilhar outro;
+- a pílula do destaque sumia de um lugar e aparecia no outro. Agora é um elemento só que desliza com mola, e a cor do ícone e do rótulo acompanha o movimento — senão o texto fica escuro sobre fundo escuro no meio do caminho.
+
+As telas ficam montadas (`detachInactiveScreens={false}`), então os cartões não repetem a animação de entrada toda vez que você volta para a aba.
+
 ## Gráficos e animações
 Barras e áreas com degradê, pontas arredondadas, valores escritos em cima das barras e hierarquia de texto (rótulo em caixa alta pequena, número grande e pesado). O valor principal do painel **conta até o número** em vez de aparecer pronto: no celular isso roda na thread de UI (`animatedProps` sobre um `TextInput`), no navegador cai para um contador simples, porque ali o Reanimated não anima texto.
 

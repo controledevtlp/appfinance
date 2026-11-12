@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, SectionList, TextInput, View } from 'react-native';
-import { Backdrop } from '@/components/glass';
+import { Backdrop, useHasBackdrop } from '@/components/glass';
 import { Press } from '@/components/motion';
 import { CategoryBadge, Chip, Icon, MonthSwitcher, Txt, tap } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
@@ -19,6 +19,7 @@ type Filter = 'all' | 'expense' | 'income';
 export default function Lancamentos() {
   const t = useTheme();
   const { transactions, month, setMonth, settings } = useApp();
+  const hasBackdrop = useHasBackdrop();
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
 
@@ -36,7 +37,7 @@ export default function Lancamentos() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Backdrop />
+      {hasBackdrop ? null : <Backdrop />}
       <View style={{ padding: 16, gap: 10, paddingTop: 70 }}>
         <MonthSwitcher month={month} onChange={setMonth} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.fieldBg, borderRadius: radius.pill, borderWidth: 1, borderColor: t.border, paddingHorizontal: 14 }}>

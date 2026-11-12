@@ -19,7 +19,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, getCategory } from '@/engine/cat
 import { monthLabel, shiftMonth } from '@/engine/dates';
 import type { TxType } from '@/engine/types';
 import { glassShadow, radius, space, useTheme } from '@/theme';
-import { Backdrop, Glass, GradientPill } from './glass';
+import { Backdrop, Glass, GradientPill, useHasBackdrop } from './glass';
 import { Press } from './motion';
 
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -301,9 +301,10 @@ export function CardTitle({ label, title, hint, right }: { label: string; title:
 }
 
 export function Screen({ children, padBottom = 150 }: { children: ReactNode; padBottom?: number }) {
+  const hasBackdrop = useHasBackdrop();
   return (
     <View style={{ flex: 1 }}>
-      <Backdrop />
+      {hasBackdrop ? null : <Backdrop />}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: padBottom }}
