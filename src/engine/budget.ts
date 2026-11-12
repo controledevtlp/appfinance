@@ -1,4 +1,4 @@
-import { CATEGORIES, FIXED_COST_CATEGORIES, GROUP_IDEAL_PCT, GROUP_LABEL } from './categories';
+import { CATEGORIES, FIXED_COST_CATEGORIES, FOOD_CATEGORIES, GROUP_IDEAL_PCT, GROUP_LABEL } from './categories';
 import { currentMonthKey, daysInMonth, monthKey, shiftMonth } from './dates';
 import type {
   Category,
@@ -12,10 +12,52 @@ import type {
 
 const WARNING_RATIO = 0.8;
 
+const FOOD_TOTAL_PCT = CATEGORIES.filter((c) => (FOOD_CATEGORIES as readonly string[]).includes(c.id)).reduce(
+  (a, c) => a + c.idealPct,
+  0,
+);
+
+/**
+ * Teto da categoria: a fatia da renda livre mais, nas categorias de
+ * alimentação, a parte do cartão alimentação. O benefício é dividido entre
+ * mercado e alimentação fora na mesma proporção dos ideais delas.
+ */
 export function limitFor(cat: Category, baseIncomeCents: number, settings: Settings): number {
   const override = settings.budgetOverrides[cat.id];
   if (override !== undefined && override >= 0) return override;
-  return Math.round((baseIncomeCents * cat.idealPct) / 100);
+  const base = Math.round((baseIncomeCents * cat.idealPct) / 100);
+  const benefit = settings.mealBenefitCents;
+  if (benefit > 0 && (FOOD_CATEGORIES as readonly string[]).includes(cat.id) && FOOD_TOTAL_PCT > 0) {
+    return base + Math.round((benefit * cat.idealPct) / FOOD_TOTAL_PCT);
+  }
+  return base;
+}
+
+export interface BenefitStatus {
+  limitCents: number;
+  spentCents: number;
+  remainingCents: number;
+  /** 0..1 do limite já usado. */
+  progress: number;
+}
+
+/** Quanto do cartão alimentação já foi usado no mês (gastos de mercado e alimentação fora). */
+export function mealBenefitStatus(txs: Transaction[], month: string, settings: Settings): BenefitStatus {
+  const limitCents = settings.mealBenefitCents;
+  const spentCents = txs
+    .filter(
+      (t) =>
+        t.type === 'expense' &&
+        monthKey(t.date) === month &&
+        (FOOD_CATEGORIES as readonly string[]).includes(t.categoryId),
+    )
+    .reduce((a, t) => a + t.amountCents, 0);
+  return {
+    limitCents,
+    spentCents,
+    remainingCents: Math.max(0, limitCents - spentCents),
+    progress: limitCents > 0 ? Math.min(1, spentCents / limitCents) : 0,
+  };
 }
 
 /** Conta fixa: ou a categoria é de compromisso fixo, ou o usuário marcou o lançamento como recorrente. */
@@ -113,14 +155,25 @@ export function computeMonthSummary(
     projectedExpenseCents = Math.round(Math.max(fixedSoFar, prevFixed) + (variableSoFar / day) * daysInMonth(month));
   }
 
+  /*
+   * O benefício não entra na renda livre (não dá para pagar aluguel nem
+   * investir com ele), por isso os ideais de 50/30/20 continuam saindo da
+   * renda livre. Mas ele entrou no mês e cobre comida, então conta na hora
+   * de medir quanto sobrou.
+   */
+  const benefitCents = settings.mealBenefitCents;
+  const totalResourcesCents = baseIncomeCents + benefitCents;
+
   return {
     month,
     incomeCents,
     baseIncomeCents,
+    benefitCents,
+    totalResourcesCents,
     expenseCents,
     investedCents,
     balanceCents: incomeCents - expenseCents - investedCents,
-    savingsRatePct: baseIncomeCents > 0 ? ((baseIncomeCents - expenseCents) / baseIncomeCents) * 100 : 0,
+    savingsRatePct: totalResourcesCents > 0 ? ((totalResourcesCents - expenseCents) / totalResourcesCents) * 100 : 0,
     debtCents,
     debtRatioPct: baseIncomeCents > 0 ? (debtCents / baseIncomeCents) * 100 : 0,
     groups,

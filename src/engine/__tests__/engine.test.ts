@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { computeMonthSummary, dailySpending, emergencyStatus, essentialMonthlyCost, monthlySeries, recurringMonthlyCost } from '../budget';
+import {
+  computeMonthSummary,
+  dailySpending,
+  emergencyStatus,
+  essentialMonthlyCost,
+  limitFor,
+  mealBenefitStatus,
+  monthlySeries,
+  recurringMonthlyCost,
+} from '../budget';
 import { categorize } from '../categorizer';
 import { shiftMonth, parseDateToISO } from '../dates';
 import { buildDemoTransactions, DEMO_SETTINGS } from '../demo';
@@ -7,6 +16,7 @@ import { healthScore } from '../health';
 import { decodeBytes, groupRecurringCandidates, parseStatement, toPreviewRows } from '../import';
 import { formatBRL, parseMoneyToCents } from '../money';
 import { detectSubscriptions, generateTips } from '../tips';
+import { getCategory } from '../categories';
 import { DEFAULT_SETTINGS, type Settings, type Transaction } from '../types';
 
 const NOW = new Date(2026, 10, 20); // 20/11/2026
@@ -227,8 +237,11 @@ describe('dados de demonstração', () => {
     const s = computeMonthSummary(demo, '2026-10', DEMO_SETTINGS, NOW);
     expect(s.incomeCents).toBeGreaterThan(0);
     const tips = generateTips(demo, '2026-10', DEMO_SETTINGS, NOW);
-    expect(tips.some((t) => t.id === 'over:delivery')).toBe(true);
+    expect(tips.some((t) => t.id === 'over:moradia')).toBe(true);
     expect(tips.some((t) => t.id === 'assinaturas')).toBe(true);
+    // O cartão alimentação do exemplo (R$ 800) mantém mercado e delivery dentro do teto.
+    const food = s.categories.filter((c) => c.category.id === 'mercado' || c.category.id === 'delivery');
+    expect(food.every((c) => c.status !== 'over')).toBe(true);
   });
 });
 
@@ -439,5 +452,63 @@ describe('ajustes de leitura do extrato', () => {
   it('classifica parcelamento sem lojista como dívida', () => {
     expect(categorize('NOTEBOOK PARCELA 3/10', 'expense')).toBe('dividas');
     expect(categorize('MAGAZINE LUIZA PARC 2/3', 'expense')).toBe('compras');
+  });
+});
+
+describe('cartão alimentação', () => {
+  // Renda livre 5000 + benefício 800. Mercado ideal 10%, alimentação fora 7%.
+  const comBeneficio: Settings = { ...settings, mealBenefitCents: 80000 };
+
+  it('aumenta só o teto de mercado e alimentação fora, na proporção dos ideais', () => {
+    const mercado = limitFor(getCategory('mercado'), 500000, comBeneficio);
+    const delivery = limitFor(getCategory('delivery'), 500000, comBeneficio);
+    expect(mercado).toBe(50000 + Math.round((80000 * 10) / 17));
+    expect(delivery).toBe(35000 + Math.round((80000 * 7) / 17));
+    // O benefício não paga aluguel: moradia continua em 20% da renda livre.
+    expect(limitFor(getCategory('moradia'), 500000, comBeneficio)).toBe(100000);
+  });
+
+  it('não infla a renda livre, mas conta no quanto sobrou', () => {
+    const txs = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-15', 'Mercado', 1000, 'mercado')];
+    const s = computeMonthSummary(txs, '2026-10', comBeneficio, NOW);
+    expect(s.baseIncomeCents).toBe(500000); // ideais continuam saindo da renda livre
+    expect(s.benefitCents).toBe(80000);
+    expect(s.totalResourcesCents).toBe(580000);
+    // Sem o benefício na conta, gastar 1000 em mercado pareceria pior do que é.
+    expect(s.savingsRatePct).toBeCloseTo(((580000 - 100000) / 580000) * 100, 1);
+    expect(s.groups.find((g) => g.group === 'necessidades')!.idealCents).toBe(250000);
+  });
+
+  it('acompanha quanto do benefício já foi usado', () => {
+    const txs = [tx('2026-10-10', 'Carrefour', 600, 'mercado'), tx('2026-10-11', 'iFood', 150, 'delivery'), tx('2026-10-12', 'Uber', 80, 'transporte')];
+    const b = mealBenefitStatus(txs, '2026-10', comBeneficio);
+    expect(b.spentCents).toBe(75000); // transporte não usa o cartão
+    expect(b.remainingCents).toBe(5000);
+    expect(b.progress).toBeCloseTo(0.9375, 3);
+  });
+
+  it('sem benefício informado, nada muda', () => {
+    expect(limitFor(getCategory('mercado'), 500000, settings)).toBe(50000);
+    expect(mealBenefitStatus([], '2026-10', settings)).toMatchObject({ limitCents: 0, progress: 0 });
+  });
+});
+
+describe('mês de destino depois da importação', () => {
+  // A regra usada na tela de importação: cai no mês com mais lançamentos e,
+  // em caso de empate, no mais recente.
+  const busiestMonth = (dates: string[]) => {
+    const months = new Map<string, number>();
+    for (const d of dates) {
+      const m = d.slice(0, 7);
+      months.set(m, (months.get(m) ?? 0) + 1);
+    }
+    return [...months.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? 1 : -1))[0]?.[0];
+  };
+
+  it('escolhe o mês com mais lançamentos', () => {
+    expect(busiestMonth(['2026-10-05', '2026-10-10', '2026-11-02'])).toBe('2026-10');
+  });
+  it('no empate, fica com o mais recente', () => {
+    expect(busiestMonth(['2026-09-05', '2026-10-10'])).toBe('2026-10');
   });
 });

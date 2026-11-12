@@ -4,6 +4,7 @@ import { Modal, Pressable, View } from 'react-native';
 import { Appear, Bar, Press } from '@/components/motion';
 import { Button, Card, CategoryBadge, Field, MonthSwitcher, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
+import { mealBenefitStatus } from '@/engine/budget';
 import { GROUP_LABEL } from '@/engine/categories';
 import { formatBRL, parseMoneyToCents } from '@/engine/money';
 import type { CategoryUsage } from '@/engine/types';
@@ -13,7 +14,8 @@ const GROUPS = ['necessidades', 'desejos', 'poupanca'] as const;
 
 export default function Orcamento() {
   const t = useTheme();
-  const { summary, month, setMonth, settings, saveSettings, emergency } = useApp();
+  const { summary, month, setMonth, settings, saveSettings, emergency, transactions } = useApp();
+  const benefit = mealBenefitStatus(transactions, month, settings);
   const [editing, setEditing] = useState<CategoryUsage | null>(null);
   const [value, setValue] = useState('');
 
@@ -38,21 +40,44 @@ export default function Orcamento() {
         <Txt variant="muted">Renda usada nos cálculos</Txt>
         <Txt variant="title">{formatBRL(summary.baseIncomeCents)}</Txt>
         <Txt variant="small">
-          {settings.monthlyIncomeCents > 0 ? 'Renda líquida mensal informada em Ajustes.' : 'Usando as receitas lançadas no mês. Informe sua renda fixa em Ajustes para ter limites estáveis.'}
+          {settings.monthlyIncomeCents > 0
+            ? 'Renda líquida informada em Minha renda.'
+            : 'Usando as receitas lançadas no mês. Informe sua renda fixa para ter limites estáveis.'}
+          {settings.mealBenefitCents > 0
+            ? ` Mais ${formatBRL(settings.mealBenefitCents)} de cartão alimentação, que eleva o teto de mercado e alimentação fora.`
+            : ''}
         </Txt>
         <Button title="Alterar renda" icon="cash-outline" variant="ghost" onPress={() => router.push('/renda')} />
       </Card>
       </Appear>
 
+      {benefit.limitCents > 0 ? (
+        <Appear index={1}>
+          <Card>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Txt variant="h2">Cartão alimentação</Txt>
+              <Txt variant="muted">{formatBRL(benefit.remainingCents)} disponível</Txt>
+            </View>
+            <Bar ratio={benefit.progress} color={benefit.progress >= 1 ? t.warning : t.primary} height={10} />
+            <Txt variant="small">
+              {formatBRL(benefit.spentCents)} de {formatBRL(benefit.limitCents)} usados em mercado e alimentação fora.
+              {benefit.spentCents > benefit.limitCents
+                ? ` Passou ${formatBRL(benefit.spentCents - benefit.limitCents)} do benefício — essa parte saiu do seu bolso.`
+                : ''}
+            </Txt>
+          </Card>
+        </Appear>
+      ) : null}
+
       {GROUPS.map((g, gi) => {
         const group = summary.groups.find((x) => x.group === g)!;
         const cats = summary.categories.filter((c) => c.category.group === g);
         return (
-          <Appear key={g} index={gi + 1}>
+          <Appear key={g} index={gi + 2}>
           <Card>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ gap: 2 }}>
               <Txt variant="h2">{GROUP_LABEL[g]} · {group.idealPct}%</Txt>
-              <Txt variant="muted">{formatBRL(group.spentCents)} / {formatBRL(group.idealCents)}</Txt>
+              <Txt variant="small">{formatBRL(group.spentCents)} de {formatBRL(group.idealCents)}</Txt>
             </View>
             {cats.map((u, i) => (
               <Press key={u.category.id} onPress={() => open(u)} accessibilityRole="button" accessibilityLabel={`Editar limite de ${u.category.name}`} style={{ gap: 6 }}>

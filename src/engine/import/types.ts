@@ -9,7 +9,7 @@ export interface ParsedRow {
 }
 
 export interface ParseResult {
-  format: 'csv' | 'ofx';
+  format: 'csv' | 'ofx' | 'pdf';
   rows: ParsedRow[];
   /** Linhas ignoradas por data/valor inválidos. */
   skipped: number;

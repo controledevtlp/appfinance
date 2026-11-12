@@ -11,11 +11,12 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 | **Lançamentos** | Lista por dia com busca e filtro; adicionar/editar/excluir; categoria sugerida automaticamente pela descrição |
 | **Orçamento** | Limite ideal por categoria (calculado sobre a sua renda), barras de uso, limites personalizáveis |
 | **Dicas** | Alertas ordenados por gravidade, cada um com **plano de melhoria em etapas** e economia mensal estimada |
-| **Importar extrato** | CSV (vários bancos, fatura de cartão) e OFX, com prévia, correção de categoria, descarte de duplicados e **mapeamento de gastos constantes** |
-| **Minha renda** | Informe quanto recebe sem precisar de extrato: várias fontes (salário, freela, aluguel…), total ao vivo e prévia do 50/30/20 enquanto digita |
+| **Importar extrato** | CSV, OFX e **PDF**, com prévia, correção de categoria (e de entrada/saída), descarte de duplicados e **mapeamento de gastos constantes** |
+| **Minha renda** | Informe quanto recebe sem precisar de extrato: várias fontes (salário, freela, aluguel…), **cartão alimentação**, total ao vivo e prévia do 50/30/20 enquanto digita |
 | **Ajustes** | Renda líquida, reserva atual, notificações, dados de exemplo, conta |
 
 ### Como os cálculos funcionam (`src/engine`)
+- **Cartão alimentação**: é renda de uso restrito, então não entra na renda livre (a regra 50/30/20 continua saindo do salário) — ele eleva o teto de mercado e alimentação fora, rateado pelos ideais dessas duas categorias, e conta no quanto sobrou no mês.
 - **Regra 50/30/20** sobre a renda líquida: 50% necessidades, 30% desejos, 20% poupança. Cada categoria tem um % ideal (ver `categories.ts`) e você pode sobrescrever o limite.
 - **Taxa de poupança** = (renda − gastos de necessidades e desejos) ÷ renda. Meta: 20%.
 - **Reserva de emergência**: meta = 6 × custo médio mensal de necessidades, calculado só com **meses completos** (o mês em andamento ficaria baixo porque as contas ainda não venceram). Sem histórico, estima por 50% da renda.
@@ -27,7 +28,7 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 - Excessos menores que R$ 20 não geram dica.
 - A soma "você libera até X/mês" não conta duas vezes: juros que já estão numa categoria estourada entram uma vez só.
 
-Todo o motor é TypeScript puro e testado: `npm test` (46 testes).
+Todo o motor é TypeScript puro e testado: `npm test` (61 testes).
 
 ## Rodar no computador
 
@@ -75,15 +76,26 @@ São **locais** (agendadas no próprio aparelho, sem servidor): alerta quando um
 ## Gastos constantes
 Ao ler o extrato, o app agrupa os lançamentos por descrição (ignorando números, então "Parcela 3/10" e "Parcela 4/10" são o mesmo compromisso) e já marca os que parecem fixos: os que repetem em 2+ meses com valor praticamente igual, ou os de categoria tipicamente fixa (moradia, contas, assinaturas, dívidas, educação). Um delivery que repete com valores diferentes **não** é marcado. Você confirma ou desmarca cada um, e o total aparece na hora comparado com 50% da sua renda. O que é marcado entra na projeção do mês como conta que vence uma vez só.
 
+## Cores
+Paleta índigo sobre neutro levemente arroxeado (`src/theme/index.ts`). Nada de branco puro nem preto puro: o contraste máximo cansa a vista em uso longo, então o fundo claro é um cinza-lavanda e o escuro é um carvão arroxeado. Verde e vermelho ficam reservados para entrada e saída de dinheiro, onde a cor precisa significar alguma coisa. A paleta dos gráficos também vem do tema, então ela clareia no modo escuro.
+
 ## Gráficos e animações
 Gráficos em SVG puro (`react-native-svg`), sem biblioteca de charts — são poucos elementos e o desenho é barato. As animações usam **Reanimated**, que roda na thread de UI: a rolagem não engasga enquanto o orçamento é recalculado, e nada anima quadro a quadro em JavaScript. As primitivas ficam em `src/components/motion.tsx` (entrada escalonada dos cartões, toque com resposta tátil, barras que crescem até o valor). Listas longas não recebem animação por item, de propósito. O Reanimated respeita "reduzir movimento" do sistema.
 
 ## Importar extrato
-No app/internet banking, exporte o extrato em **CSV ou OFX** (ou a fatura do cartão) e escolha o arquivo em *Importar extrato*.
+No app/internet banking, exporte o extrato em **CSV, OFX ou PDF** (ou a fatura do cartão) e escolha o arquivo em *Importar extrato*.
 - Detecta separador (`;`/`,`), cabeçalho (mesmo com linhas de preâmbulo), valores `1.234,56`, colunas separadas de débito/crédito e acentos em Latin-1.
 - Fatura de cartão (positivo = compra) é detectada, ou ligue a chave manualmente.
 - Pagamento de fatura e transferências ficam em “Transferência” e **não** entram nas contas, para não contar gasto em dobro.
 - Reimportar o mesmo arquivo não duplica (identificador do banco ou hash estável).
+- Depois de importar, o app vai para o mês com mais lançamentos do arquivo, em vez de abrir no mês atual vazio.
+
+### PDF
+O leitor de PDF é próprio (`src/engine/import/pdf.ts`): acha os streams de conteúdo, descomprime o que está em FlateDecode (via `fflate`), lê os operadores de texto (`Tj`, `TJ`, `Td`, `Tm`) e remonta as linhas pela posição na página. Depois procura "data … descrição … valor", entende as marcas `C`/`D`, descarta linhas de saldo e total, e completa o ano em datas curtas.
+**Limites honestos:** PDF digitalizado (foto ou scan) não tem texto e não dá para ler — o app avisa e pede CSV/OFX. Fontes com codificação própria podem sair ilegíveis. Quando a linha não traz sinal nem `C`/`D`, o lançamento entra como saída e o app avisa: na prévia dá para tocar e escolher uma categoria de receita para virar entrada. **CSV e OFX continuam sendo os formatos mais confiáveis.**
+
+### Se o arquivo não abrir
+A leitura tenta, em ordem: o Blob do navegador, o `expo-file-system` (celular) e `fetch` do endereço do arquivo (resolve `file://`, `content://`, `blob:` e `data:`). Se as três falharem, a tela mostra o que foi tentado. Se o arquivo abrir mas nada for reconhecido, a tela mostra as primeiras linhas do arquivo, para dar para ver o que o app leu. Há também um botão **Testar com um extrato de exemplo**, que importa sem depender de arquivo — serve para separar "o seletor de arquivos falhou" de "meu arquivo não foi entendido".
 
 ## Estrutura
 ```

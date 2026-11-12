@@ -180,15 +180,31 @@ export function CategoryBadge({ categoryId, size = 40 }: { categoryId: string; s
 }
 
 /** Seletor de categoria em folha inferior. */
-export function CategoryPicker({ visible, type, value, onSelect, onClose }: { visible: boolean; type: TxType; value?: string; onSelect: (id: string) => void; onClose: () => void }) {
+export function CategoryPicker({
+  visible,
+  type,
+  value,
+  onSelect,
+  onClose,
+  allowAll,
+}: {
+  visible: boolean;
+  type: TxType;
+  value?: string;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+  /** Mostra receitas e despesas juntas, para corrigir uma linha lida com o sinal errado. */
+  allowAll?: boolean;
+}) {
   const t = useTheme();
-  const list = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const list = allowAll ? [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES] : type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: '#0008', justifyContent: 'flex-end' }} onPress={onClose}>
         <Pressable style={{ backgroundColor: t.card, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '75%', paddingBottom: 24 }} onPress={() => {}}>
           <View style={{ padding: space.lg, borderBottomWidth: 1, borderColor: t.border }}>
             <Txt variant="h2">Escolha a categoria</Txt>
+            {allowAll ? <Txt variant="small">Escolher uma categoria de receita transforma a linha em entrada.</Txt> : null}
           </View>
           <ScrollView>
             {list.map((c) => (

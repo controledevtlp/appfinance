@@ -46,6 +46,12 @@ export interface Settings {
   monthlyIncomeCents: number;
   /** Detalhamento de onde vem a renda (só informativo: a soma vai em monthlyIncomeCents). */
   incomeSources: IncomeSource[];
+  /**
+   * Limite mensal do cartão alimentação/refeição da empresa, em centavos.
+   * É dinheiro de uso restrito: não entra na renda livre (não dá para pagar
+   * aluguel nem investir), mas aumenta o teto de mercado e alimentação fora.
+   */
+  mealBenefitCents: number;
   /** Quanto já existe guardado como reserva de emergência, em centavos. */
   emergencyBalanceCents: number;
   /** Limites personalizados por categoria (centavos/mês). */
@@ -56,6 +62,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   monthlyIncomeCents: 0,
   incomeSources: [],
+  mealBenefitCents: 0,
   emergencyBalanceCents: 0,
   budgetOverrides: {},
   notifications: { weeklySummary: true, budgetAlerts: true, dailyReminder: false },
@@ -89,7 +96,11 @@ export interface MonthSummary {
   expenseCents: number; // despesas "reais" (exclui poupança e ignorar)
   investedCents: number; // aportes em poupança/investimentos
   balanceCents: number; // renda lançada - despesas - aportes
-  /** (renda base - gastos de necessidades/desejos) / renda base, em % */
+  /** Benefício alimentação do mês (uso restrito). */
+  benefitCents: number;
+  /** Renda livre + benefício: tudo o que entrou, para a conta de quanto sobrou. */
+  totalResourcesCents: number;
+  /** (recursos totais - gastos) / recursos totais, em % */
   savingsRatePct: number;
   debtCents: number;
   /** parcelas e dívidas / renda base, em % */

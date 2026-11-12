@@ -38,6 +38,9 @@ export default function Renda() {
     const total = settings.monthlyIncomeCents;
     return [{ id: newId(), label: 'Salário', cents: total, raw: total ? (total / 100).toFixed(2).replace('.', ',') : '', categoryId: 'salario' }];
   });
+  const [benefit, setBenefit] = useState(() =>
+    settings.mealBenefitCents ? (settings.mealBenefitCents / 100).toFixed(2).replace('.', ',') : '',
+  );
   const [alsoPost, setAlsoPost] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -48,6 +51,7 @@ export default function Renda() {
   );
 
   const totalCents = drafts.reduce((a, d) => a + (parseMoneyToCents(d.raw) ?? 0), 0);
+  const benefitCents = Math.max(0, parseMoneyToCents(benefit) ?? 0);
   const split = {
     necessidades: Math.round(totalCents * 0.5),
     desejos: Math.round(totalCents * 0.3),
@@ -69,7 +73,7 @@ export default function Renda() {
       const sources: IncomeSource[] = drafts
         .map((d) => ({ id: d.id, label: d.label.trim() || 'Renda', cents: parseMoneyToCents(d.raw) ?? 0 }))
         .filter((s) => s.cents > 0);
-      await saveSettings({ ...settings, monthlyIncomeCents: totalCents, incomeSources: sources });
+      await saveSettings({ ...settings, monthlyIncomeCents: totalCents, incomeSources: sources, mealBenefitCents: benefitCents });
 
       if (alsoPost) {
         const withCategory = new Map(drafts.map((d) => [d.id, d.categoryId]));
@@ -85,7 +89,13 @@ export default function Renda() {
           })),
         );
       }
-      notify('Renda salva', `Agora os limites de cada categoria são calculados sobre ${formatBRL(totalCents)}.`, () => router.back());
+      notify(
+        'Renda salva',
+        benefitCents > 0
+          ? `Limites calculados sobre ${formatBRL(totalCents)}, mais ${formatBRL(benefitCents)} de benefício para alimentação.`
+          : `Agora os limites de cada categoria são calculados sobre ${formatBRL(totalCents)}.`,
+        () => router.back(),
+      );
     } catch (e) {
       notify('Erro ao salvar', (e as Error).message);
       setBusy(false);
@@ -136,8 +146,35 @@ export default function Renda() {
           </Card>
         </Appear>
 
+        <Appear index={2}>
+          <Card>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Txt variant="h2">Benefícios da empresa</Txt>
+                <Txt variant="small">Dinheiro de uso restrito: não dá para pagar aluguel nem investir com ele.</Txt>
+              </View>
+              <Icon name="fast-food" color={t.primary} size={22} />
+            </View>
+            <MoneyField
+              label="Cartão alimentação / refeição (limite mensal)"
+              value={benefit}
+              onChangeText={setBenefit}
+              hint="Some o que a empresa deposita por mês. Vale para mercado, lanches e restaurantes."
+            />
+            {benefitCents > 0 ? (
+              <View style={{ backgroundColor: t.soft, borderRadius: radius.md, padding: 12, gap: 4 }}>
+                <Txt variant="small" style={{ fontWeight: '700' }}>COMO ENTRA NA CONTA</Txt>
+                <Txt variant="small">
+                  Os {formatBRL(benefitCents)} não entram na renda livre, então a regra 50/30/20 continua saindo do salário.
+                  O que eles fazem é aumentar o teto de mercado e de alimentação fora, e contar no quanto sobrou no fim do mês.
+                </Txt>
+              </View>
+            ) : null}
+          </Card>
+        </Appear>
+
         {totalCents > 0 ? (
-          <Appear index={2}>
+          <Appear index={3}>
             <Card>
               <Txt variant="h2">O que isso libera por mês</Txt>
               <Txt variant="small">A divisão 50/30/20 aplicada à sua renda, atualizada enquanto você digita.</Txt>
@@ -148,7 +185,7 @@ export default function Renda() {
           </Appear>
         ) : null}
 
-        <Appear index={3}>
+        <Appear index={4}>
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={{ flex: 1 }}>

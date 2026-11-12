@@ -9,8 +9,6 @@ import { formatBRL } from '@/engine/money';
 import { confirmDialog, notify } from '@/lib/dialog';
 import { useTheme } from '@/theme';
 
-const PALETTE = ['#0F766E', '#D97706', '#2563EB', '#9333EA', '#DB2777', '#64748B'];
-
 export default function Painel() {
   const t = useTheme();
   const {
@@ -26,9 +24,9 @@ export default function Painel() {
     const sorted = summary.categories
       .filter((c) => c.spentCents > 0 && c.category.group !== 'poupanca')
       .sort((a, b) => b.spentCents - a.spentCents);
-    const head = sorted.slice(0, 5).map((c, i) => ({ name: c.category.name, value: c.spentCents, color: PALETTE[i] }));
+    const head = sorted.slice(0, 5).map((c, i) => ({ name: c.category.name, value: c.spentCents, color: t.chart[i] }));
     const rest = sorted.slice(5).reduce((a, c) => a + c.spentCents, 0);
-    return rest > 0 ? [...head, { name: 'Outras', value: rest, color: PALETTE[5] }] : head;
+    return rest > 0 ? [...head, { name: 'Outras', value: rest, color: t.chart[5] }] : head;
   })();
 
   const healthColor = !health ? t.muted : health.score >= 70 ? t.ok : health.score >= 50 ? t.warning : t.over;

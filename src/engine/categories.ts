@@ -47,6 +47,9 @@ export const GROUP_LABEL = {
  */
 export const FIXED_COST_CATEGORIES = new Set(['moradia', 'contas', 'saude', 'educacao', 'dividas']);
 
+/** Onde o cartão alimentação pode ser usado: mercado e alimentação fora de casa. */
+export const FOOD_CATEGORIES = ['mercado', 'delivery'] as const;
+
 export const GROUP_IDEAL_PCT = { necessidades: 50, desejos: 30, poupanca: 20 } as const;
 
 const BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));

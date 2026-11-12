@@ -1,15 +1,23 @@
 import { categorize, normalize } from '../categorizer';
 import type { Transaction } from '../types';
 import { parseCsv } from './csv';
+import { isPdf, parsePdf } from './pdf';
 import { parseOfx } from './ofx';
 import type { ParseOptions, ParseResult, ParsedRow } from './types';
 
 export type { ParseOptions, ParseResult, ParsedRow } from './types';
 export { groupRecurringCandidates, type RecurringGroup } from './recurring';
+export { extractPdfLines, isPdf, parsePdf, parsePdfLines } from './pdf';
 
 export function parseStatement(text: string, opts: ParseOptions = {}): ParseResult {
   const isOfx = /<OFX>|OFXHEADER|<STMTTRN>/i.test(text);
   return isOfx ? parseOfx(text) : parseCsv(text, opts);
+}
+
+/** Ponto de entrada da importação: decide o formato pelos próprios bytes do arquivo. */
+export function parseStatementBytes(bytes: Uint8Array, opts: ParseOptions = {}): ParseResult {
+  if (isPdf(bytes)) return parsePdf(bytes);
+  return parseStatement(decodeBytes(bytes), opts);
 }
 
 function hash(s: string): string {

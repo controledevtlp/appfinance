@@ -15,6 +15,7 @@ function mulberry32(seed: number) {
 export const DEMO_SETTINGS: Settings = {
   monthlyIncomeCents: 650000,
   incomeSources: [{ id: 'demo-salario', label: 'Salário', cents: 650000 }],
+  mealBenefitCents: 80000,
   emergencyBalanceCents: 900000,
   budgetOverrides: {},
   notifications: { weeklySummary: true, budgetAlerts: true, dailyReminder: false },
