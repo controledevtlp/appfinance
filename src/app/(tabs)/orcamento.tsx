@@ -37,17 +37,17 @@ export default function Orcamento() {
 
       <Appear index={0}>
       <Card>
-        <Txt variant="muted">Renda usada nos cálculos</Txt>
+        <Txt variant="muted">O que eu uso de base</Txt>
         <Txt variant="title">{formatBRL(summary.baseIncomeCents)}</Txt>
         <Txt variant="small">
           {settings.monthlyIncomeCents > 0
-            ? 'Renda líquida informada em Minha renda.'
-            : 'Usando as receitas lançadas no mês. Informe sua renda fixa para ter limites estáveis.'}
+            ? 'É o que você me contou em "Minha renda".'
+            : 'Tô usando o que entrou esse mês. Se me contar sua renda fixa, os limites ficam mais certos.'}
           {settings.mealBenefitCents > 0
             ? ` Mais ${formatBRL(settings.mealBenefitCents)} de cartão alimentação, que eleva o teto de mercado e alimentação fora.`
             : ''}
         </Txt>
-        <Button title="Alterar renda" icon="cash-outline" variant="ghost" onPress={() => router.push('/renda')} />
+        <Button title="Mudar minha renda" icon="cash-outline" variant="ghost" onPress={() => router.push('/renda')} />
       </Card>
       </Appear>
 
@@ -56,15 +56,15 @@ export default function Orcamento() {
           <Card>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Txt variant="h2">Cartão alimentação</Txt>
-              <Txt variant="muted">{formatBRL(benefit.remainingCents)} disponível</Txt>
+              <Txt variant="muted">ainda tem {formatBRL(benefit.remainingCents)}</Txt>
             </View>
             <Press onPress={() => router.push({ pathname: '/detalhe', params: { kind: 'food' } })} accessibilityLabel="Ver gastos de alimentação">
               <Bar ratio={benefit.progress} color={benefit.progress >= 1 ? t.warning : t.primary} height={10} />
             </Press>
             <Txt variant="small">
-              {formatBRL(benefit.spentCents)} de {formatBRL(benefit.limitCents)} usados em mercado e alimentação fora.
+              Você já usou {formatBRL(benefit.spentCents)} de {formatBRL(benefit.limitCents)} em mercado e comida fora.
               {benefit.spentCents > benefit.limitCents
-                ? ` Passou ${formatBRL(benefit.spentCents - benefit.limitCents)} do benefício — essa parte saiu do seu bolso.`
+                ? ` Passou ${formatBRL(benefit.spentCents - benefit.limitCents)} do cartão, então essa parte saiu do seu bolso.`
                 : ''}
             </Txt>
           </Card>
@@ -113,10 +113,10 @@ export default function Orcamento() {
       <Appear index={5}>
       <Card>
         <Txt variant="h2">Reserva de emergência</Txt>
-        <Txt variant="muted">Custos essenciais: {formatBRL(emergency.essentialCents)}/mês (média dos últimos meses). Meta de 6 meses: {formatBRL(emergency.targetCents)}.</Txt>
+        <Txt variant="muted">Seu custo pra viver é {formatBRL(emergency.essentialCents)}/mês (média dos últimos meses). Pra 6 meses, a meta é {formatBRL(emergency.targetCents)}.</Txt>
         <Bar ratio={emergency.progress} color={t.poupanca} height={10} />
-        <Txt variant="small">Você tem {formatBRL(emergency.balanceCents)} ({emergency.monthsCovered.toFixed(1).replace('.', ',')} meses). Guardando {formatBRL(emergency.suggestedMonthlyCents)} por mês, a meta sai em 12 meses.</Txt>
-        <Button title="Atualizar valor guardado" variant="ghost" onPress={() => router.push('/ajustes')} />
+        <Txt variant="small">Você tem {formatBRL(emergency.balanceCents)}, o que dá {emergency.monthsCovered.toFixed(1).replace('.', ',')} mês. Separando {formatBRL(emergency.suggestedMonthlyCents)} por mês, em um ano você chega lá.</Txt>
+        <Button title="Atualizar quanto eu tenho guardado" variant="ghost" onPress={() => router.push('/ajustes')} />
       </Card>
       </Appear>
 
@@ -124,7 +124,7 @@ export default function Orcamento() {
         <Pressable style={{ flex: 1, backgroundColor: '#0008', justifyContent: 'center', padding: 24 }} onPress={() => setEditing(null)}>
           <Pressable style={{ backgroundColor: t.card, borderRadius: radius.lg, padding: 20, gap: 14 }} onPress={() => {}}>
             <Txt variant="h2">Limite de {editing?.category.name}</Txt>
-            <Txt variant="muted">Ideal sugerido: {editing ? formatBRL(Math.round((summary.baseIncomeCents * editing.category.idealPct) / 100)) : ''} ({editing?.category.idealPct}% da renda).</Txt>
+            <Txt variant="muted">Eu sugiro {editing ? formatBRL(Math.round((summary.baseIncomeCents * editing.category.idealPct) / 100)) : ''}, que é {editing?.category.idealPct}% da sua renda. Mas o limite é seu: bota o que fizer sentido.</Txt>
             <Field label="Limite mensal (R$)" value={value} onChangeText={setValue} keyboardType="decimal-pad" />
             <Button
               title="Salvar limite"
@@ -135,7 +135,7 @@ export default function Orcamento() {
               }}
             />
             <Button
-              title="Restaurar ideal"
+              title="Voltar pro que eu sugiro"
               variant="ghost"
               onPress={() => {
                 if (!editing) return;

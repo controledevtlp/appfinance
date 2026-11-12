@@ -17,7 +17,7 @@ import { decodeBytes, groupRecurringCandidates, parseStatement, toPreviewRows } 
 import { formatBRL, parseMoneyToCents } from '../money';
 import { countSameName, displayName, withAlias, withCategoryRule } from '../naming';
 import { detectSubscriptions, generateTips, investmentTips } from '../tips';
-import { getCategory } from '../categories';
+import { CATEGORIES, getCategory } from '../categories';
 import { DEFAULT_SETTINGS, type Settings, type Transaction } from '../types';
 
 const NOW = new Date(2026, 10, 20); // 20/11/2026
@@ -306,10 +306,10 @@ describe('correções de precisão', () => {
 
   it('não conta juros duas vezes quando a categoria já está estourada', () => {
     const base = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income')];
-    // Dívidas: limite 4% de 5000 = 200. Gasto 350, dos quais 150 são juros.
+    // Dívidas: limite 2% de 5000 = 100. Gasto 350, dos quais 150 são juros.
     const estourado = generateTips([...base, tx('2026-10-10', 'Parcela', 200, 'dividas'), tx('2026-10-11', 'Juros rotativo', 150, 'dividas')], '2026-10', settings, NOW);
     expect(estourado.find((x) => x.id === 'tarifas')!.savingsCents).toBe(0);
-    expect(estourado.find((x) => x.id === 'over:dividas')!.savingsCents).toBe(15000);
+    expect(estourado.find((x) => x.id === 'over:dividas')!.savingsCents).toBe(25000);
     // Mesma tarifa numa categoria dentro do limite continua contando.
     const dentro = generateTips([...base, tx('2026-10-11', 'Anuidade cartão', 40, 'outros')], '2026-10', settings, NOW);
     expect(dentro.find((x) => x.id === 'tarifas')!.savingsCents).toBe(4000);
@@ -318,7 +318,8 @@ describe('correções de precisão', () => {
   it('não manda cortar um terço do aluguel: custo fixo pede renegociação', () => {
     const t = generateTips([tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-10', 'Aluguel', 1500, 'moradia')], '2026-10', settings, NOW);
     const fixo = t.find((x) => x.id === 'over:moradia')!;
-    expect(fixo.steps[0]).toContain('custo fixo');
+    expect(fixo.steps[0]).toContain('conta fixa');
+    expect(fixo.steps.join(' ')).toContain('renegociar');
     expect(fixo.steps.join(' ')).not.toContain('Mês 1');
     // Gasto variável mantém o plano de 3 meses.
     const variavel = generateTips([tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-11', 'iFood', 600, 'delivery')], '2026-10', settings, NOW);
@@ -562,7 +563,7 @@ describe('apelidos e dicas de investimento', () => {
     const txs = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-10', 'Aluguel', 500, 'moradia')];
     const inv = investmentTips(txs, '2026-10', settings, NOW);
     expect(inv.length).toBeGreaterThan(0);
-    for (const t of inv) expect(t.steps.some((s) => s.includes('Confirme as taxas'))).toBe(true);
+    for (const t of inv) expect(t.steps.some((s) => s.includes('Confere as taxas'))).toBe(true);
   });
 
   it('sem renda nenhuma, não inventa dica de investimento', () => {
@@ -586,5 +587,39 @@ describe('o app aprende as correções de categoria', () => {
     const rules = withCategoryRule({}, 'UAI LAVA BRASOPOLIS 001', 'transporte');
     const outro = [{ date: '2026-11-09', description: 'UAI LAVA BRASOPOLIS 047', amountCents: -3580 }];
     expect(toPreviewRows(outro, new Set(), rules)[0].categoryId).toBe('transporte');
+  });
+});
+
+describe('financiamento de carro/moto', () => {
+  it('reconhece o financiamento no extrato', () => {
+    expect(categorize('Pagamento de boleto efetuado BANCO HONDA S A', 'expense')).toBe('veiculo');
+    expect(categorize('FINANCIAMENTO DO CARRO PARCELA 12/48', 'expense')).toBe('veiculo');
+    expect(categorize('CONSORCIO NACIONAL', 'expense')).toBe('veiculo');
+    expect(categorize('BV FINANCEIRA', 'expense')).toBe('veiculo');
+    // Continua separando o que é outra dívida.
+    expect(categorize('EMPRESTIMO CONSIGNADO', 'expense')).toBe('dividas');
+  });
+
+  it('entra no comprometimento da renda junto com as outras dívidas', () => {
+    const txs = [
+      tx('2026-10-05', 'Salário', 5000, 'salario', 'income'),
+      tx('2026-10-08', 'Financiamento da moto', 700, 'veiculo'),
+      tx('2026-10-20', 'Parcela notebook', 300, 'dividas'),
+    ];
+    const s = computeMonthSummary(txs, '2026-10', settings, NOW);
+    expect(s.debtCents).toBe(100000); // 700 + 300
+    expect(s.debtRatioPct).toBe(20);
+  });
+
+  it('é tratado como custo fixo: plano de renegociação, não corte em 3 meses', () => {
+    const txs = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-08', 'Financiamento da moto', 700, 'veiculo')];
+    const t = generateTips(txs, '2026-10', settings, NOW).find((x) => x.id === 'over:veiculo')!;
+    expect(t.steps.join(' ')).not.toContain('Mês 1');
+    expect(t.steps[0]).toContain('conta fixa');
+  });
+
+  it('as necessidades continuam somando 50% da renda', () => {
+    const total = CATEGORIES.filter((c) => c.group === 'necessidades').reduce((a, c) => a + c.idealPct, 0);
+    expect(total).toBe(50);
   });
 });

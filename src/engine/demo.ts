@@ -64,6 +64,7 @@ export function buildDemoTransactions(now: Date = new Date()): Omit<Transaction,
     add(m, 5, 'Smart Fit academia', 109.9, 'expense', 'saude', true);
     add(m, 14, 'Curso Alura', 89, 'expense', 'educacao');
     add(m, 20, 'Parcela notebook', 340, 'expense', 'dividas', true);
+    add(m, 8, 'Financiamento da moto Banco Honda', 691.93, 'expense', 'veiculo', true);
 
     const deliveryCount = 8 + Math.floor(rand() * 3);
     for (let k = 0; k < deliveryCount; k++) add(m, 2 + k * 3, k % 3 === 0 ? 'iFood' : k % 3 === 1 ? 'Restaurante Madero' : 'Rappi', between(52, 82), 'expense', 'delivery');

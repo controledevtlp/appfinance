@@ -54,8 +54,8 @@ export default function Transacao() {
   const save = async () => {
     const cents = parseMoneyToCents(amount);
     const iso = parseDateToISO(date);
-    if (cents === null || cents === 0) return notify('Valor inválido', 'Informe um valor maior que zero, como 45,90.');
-    if (!iso) return notify('Data inválida', 'Use o formato dia/mês/ano, como 09/11/2026.');
+    if (cents === null || cents === 0) return notify('Valor estranho', 'Bota um valor maior que zero, tipo 45,90.');
+    if (!iso) return notify('Data estranha', 'Escreve no formato dia/mês/ano, tipo 09/11/2026.');
     setBusy(true);
     try {
       const label = name.trim() || getCategory(categoryId).name;
@@ -85,8 +85,8 @@ export default function Transacao() {
 
   const remove = () =>
     confirmDialog(
-      'Excluir lançamento?',
-      'Não dá para desfazer.',
+      'Apagar esse lançamento?',
+      'Depois não tem como voltar atrás.',
       async () => {
         try {
           await removeTransaction(existing!.id);
@@ -114,11 +114,11 @@ export default function Transacao() {
 
       <Appear index={1}>
         <Card>
-          <Txt variant="h2">Dê um nome</Txt>
+          <Txt variant="h2">Dá um nome pra isso</Txt>
           <TextInput
             value={name}
             onChangeText={onName}
-            placeholder={type === 'income' ? 'ex.: Salário de novembro' : 'ex.: Mercado da semana'}
+            placeholder={type === 'income' ? 'tipo: Salário de novembro' : 'tipo: Mercado da semana'}
             placeholderTextColor={t.muted}
             style={{ borderWidth: 1, borderColor: t.border, backgroundColor: t.bg, color: t.text, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 }}
           />
@@ -132,13 +132,13 @@ export default function Transacao() {
                       ? `Usar este nome nos ${sameName} lançamentos iguais`
                       : 'Lembrar esta categoria para os lançamentos iguais'}
                 </Txt>
-                <Txt variant="small">Vale também para os próximos meses que você importar.</Txt>
+                <Txt variant="small">Vale pros próximos meses que você importar também.</Txt>
               </View>
               <Switch value={applyToAll} onValueChange={setApplyToAll} trackColor={{ true: t.primary, false: t.border }} />
             </View>
           ) : null}
           {existing && existing.source === 'import' ? (
-            <Txt variant="small">No extrato veio como “{existing.description}”.</Txt>
+            <Txt variant="small">No extrato do banco veio como “{existing.description}”.</Txt>
           ) : null}
         </Card>
       </Appear>
@@ -146,7 +146,7 @@ export default function Transacao() {
       <Appear index={2}>
         <Card>
           <Txt variant="h2">Categoria</Txt>
-          {!touchedCategory && name ? <Txt variant="small">Sugerida pelo nome. Toque para trocar.</Txt> : null}
+          {!touchedCategory && name ? <Txt variant="small">Chutei pelo nome. Se eu errei, é só tocar na certa.</Txt> : null}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 8 }}>
             {list.map((c) => {
               const on = c.id === categoryId;
@@ -196,7 +196,7 @@ export default function Transacao() {
 
       <Appear index={3}>
         <Card>
-          <Txt variant="h2">Quando</Txt>
+          <Txt variant="h2">Quando foi isso</Txt>
           <TextInput
             value={date}
             onChangeText={setDate}
@@ -214,8 +214,8 @@ export default function Transacao() {
           {type === 'expense' ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 4 }}>
               <View style={{ flex: 1 }}>
-                <Txt style={{ fontWeight: '600' }}>Se repete todo mês</Txt>
-                <Txt variant="small">Aluguel, assinatura, parcela. Entra na projeção como conta fixa.</Txt>
+                <Txt style={{ fontWeight: '600' }}>Isso se repete todo mês?</Txt>
+                <Txt variant="small">Aluguel, assinatura, parcela do carro. Eu trato como conta fixa na projeção.</Txt>
               </View>
               <Switch value={recurring} onValueChange={setRecurring} trackColor={{ true: t.primary, false: t.border }} />
             </View>

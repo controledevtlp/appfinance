@@ -160,8 +160,8 @@ export default function Importar() {
       const busiest = [...months.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? 1 : -1))[0];
       if (busiest) setMonth(busiest[0]);
       notify(
-        'Importação concluída',
-        `${fresh.length} lançamentos adicionados${busiest ? ` em ${monthLabel(busiest[0])}` : ''}.`,
+        'Prontinho!',
+        `Coloquei ${fresh.length} lançamentos${busiest ? ` em ${monthLabel(busiest[0])}` : ''}. Bora dar uma olhada?`,
         () => router.replace('/lancamentos'),
       );
     } catch (e) {
@@ -176,8 +176,8 @@ export default function Importar() {
         <Appear>
           <Empty
             icon="document-text-outline"
-            title="Escolha o arquivo do extrato"
-            text="No app ou site do seu banco, exporte o extrato e selecione aqui. Serve também para a fatura do cartão.">
+            title="Cadê o extrato?"
+            text="Baixa o extrato no app ou no site do seu banco e escolhe aqui. A fatura do cartão também serve.">
             <View style={{ gap: 10, alignSelf: 'stretch' }}>
               <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {['CSV', 'OFX', 'PDF'].map((f) => (
@@ -187,7 +187,7 @@ export default function Importar() {
                 ))}
               </View>
               <Button title="Escolher arquivo" icon="folder-open-outline" onPress={pick} />
-              <Button title="Testar com um extrato de exemplo" icon="flask-outline" variant="ghost" onPress={loadSample} />
+              <Button title="Testar com um de mentira" icon="flask-outline" variant="ghost" onPress={loadSample} />
             </View>
           </Empty>
         </Appear>
@@ -196,12 +196,12 @@ export default function Importar() {
             <Card style={{ borderColor: t.over }}>
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                 <Icon name="alert-circle" color={t.over} />
-                <Txt variant="h2" color={t.over}>Deu problema ao abrir</Txt>
+                <Txt variant="h2" color={t.over}>Deu ruim pra abrir</Txt>
               </View>
               <Txt variant="muted">{readError}</Txt>
               <Txt variant="small">
-                Tente de novo escolhendo o arquivo pelo gerenciador de arquivos do aparelho (em vez de um app de nuvem).
-                Se continuar, toque em "Testar com um extrato de exemplo" para ver se o resto funciona.
+                Tenta de novo pegando o arquivo pelo gerenciador de arquivos do celular, em vez de um app de nuvem.
+                Se continuar dando erro, toca em "Testar com um de mentira" pra ver se o resto funciona.
               </Txt>
             </Card>
           </Appear>
@@ -245,10 +245,10 @@ export default function Importar() {
           <Card style={{ borderColor: t.warning }}>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
               <Icon name="help-circle" color={t.warning} />
-              <Txt variant="h2">Não reconheci os lançamentos</Txt>
+              <Txt variant="h2">Não consegui entender esse arquivo</Txt>
             </View>
             <Txt variant="muted">
-              O arquivo foi lido ({(bytes?.length ?? 0).toLocaleString('pt-BR')} bytes), mas não achei colunas de data e valor.
+              Consegui abrir ({(bytes?.length ?? 0).toLocaleString('pt-BR')} bytes), mas não achei data e valor aqui dentro.
             </Txt>
             {preview.length ? (
               <View style={{ backgroundColor: t.bg, borderRadius: radius.md, padding: 10, gap: 2 }}>
@@ -261,8 +261,8 @@ export default function Importar() {
               </View>
             ) : null}
             <Txt variant="small">
-              Se puder, exporte em CSV ou OFX — são os formatos mais confiáveis. Em PDF digitalizado (foto do extrato) não há
-              texto para ler.
+              Se der, exporta em CSV ou OFX, que são bem mais confiáveis. Se o PDF for digitalizado (foto do extrato), não
+              tem texto pra ler mesmo.
             </Txt>
           </Card>
         </Appear>
@@ -274,10 +274,10 @@ export default function Importar() {
             <Card>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <Txt variant="h2">Quais se repetem todo mês?</Txt>
+                  <Txt variant="h2">O que se repete todo mês?</Txt>
                   <Txt variant="small">
-                    Já marquei os que parecem fixos. Confira e ajuste: isso melhora a projeção do mês e separa o que você
-                    realmente consegue cortar.
+                    Já marquei o que me pareceu fixo. Dá uma conferida: isso separa o que você consegue cortar do que tá
+                    preso em contrato.
                   </Txt>
                 </View>
                 <Icon name="repeat" color={t.primary} size={22} />
@@ -285,18 +285,18 @@ export default function Importar() {
 
               <View style={{ backgroundColor: t.soft, borderRadius: radius.md, padding: 12, gap: 6 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <Txt variant="muted">Custo fixo mapeado</Txt>
+                  <Txt variant="muted">Suas contas fixas</Txt>
                   <Txt variant="h2" color={t.primary}>{formatBRL(fixedTotal)}/mês</Txt>
                 </View>
                 {income > 0 ? (
                   <>
                     <Bar ratio={fixedTotal / income} color={fixedTotal > income * 0.5 ? t.over : t.primary} markerAt={0.5} height={6} />
                     <Txt variant="small">
-                      {Math.round((fixedTotal / income) * 100)}% da sua renda. O traço marca 50%, o limite saudável.
+                      {Math.round((fixedTotal / income) * 100)}% da sua renda. O risquinho marca 50%, que é o limite saudável.
                     </Txt>
                   </>
                 ) : (
-                  <Txt variant="small">Informe sua renda para ver quanto isso pesa no orçamento.</Txt>
+                  <Txt variant="small">Me conta sua renda que eu te mostro o quanto isso pesa.</Txt>
                 )}
               </View>
 
@@ -339,8 +339,8 @@ export default function Importar() {
           <Card>
             <Txt variant="h2">Prévia</Txt>
             <Txt variant="small">
-              Toque na linha para corrigir a categoria — o app guarda a correção e aplica nas próximas importações. O que já
-              foi importado antes fica esmaecido.
+              Toca na linha pra arrumar a categoria. Eu guardo a correção e já aplico nas próximas vezes. O que já foi
+              importado antes fica apagadinho.
             </Txt>
             {rows.slice(0, MAX_ROWS).map((r, i) => {
               const isRecurring = selected.has(keyByIndex.get(i) ?? '');
@@ -373,10 +373,10 @@ export default function Importar() {
 
       <Appear index={3}>
         <Card>
-          <Txt variant="h2">Resumo</Txt>
+          <Txt variant="h2">No fim das contas</Txt>
           <Txt variant="muted">{fresh.length} novos · {rows.length - fresh.length} duplicados</Txt>
           <Txt>Entradas {formatBRL(totalIn)} · Saídas {formatBRL(totalOut)}</Txt>
-          <Txt variant="small">Pagamentos de fatura e transferências não entram nas contas, para não contar gasto em dobro.</Txt>
+          <Txt variant="small">Pagamento de fatura e transferência eu deixo de fora, senão o gasto conta duas vezes.</Txt>
           <Button title={`Importar ${fresh.length} lançamentos`} onPress={doImport} loading={busy} disabled={!fresh.length} />
         </Card>
       </Appear>

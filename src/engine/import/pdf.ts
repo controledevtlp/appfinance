@@ -712,21 +712,21 @@ export function parsePdfPages(pages: Row[][]): ParseResult {
   if (!rows.length) {
     warnings.push(
       allText.length
-        ? 'Li o texto do PDF, mas não reconheci linhas de lançamento (data, descrição e valor). Toque em "Ver o que foi lido" e me mostre essas linhas.'
-        : 'Não há texto neste PDF — ele é digitalizado (uma imagem) ou está protegido por senha. Exporte o extrato em CSV ou OFX.',
+        ? 'Consegui ler o texto, mas não achei as linhas de lançamento (data, descrição e valor). Dá uma olhada no que eu li aqui embaixo.'
+        : 'Esse PDF não tem texto nenhum: ou é digitalizado (foto do extrato), ou tá com senha. Tenta baixar em CSV ou OFX.',
     );
   } else {
-    if (usedColumns) warnings.push('Usei as colunas de crédito e débito do extrato para definir entradas e saídas.');
+    if (usedColumns) warnings.push('Usei as colunas de crédito e débito do extrato pra saber o que é entrada e o que é saída.');
     if (ambiguous) {
       warnings.push(
-        `${ambiguous} lançamentos não traziam sinal nem marca C/D: entraram como saída. Toque na linha para corrigir.`,
+        `${ambiguous} lançamentos vieram sem sinal, então chutei que são saída. Se eu errei em algum, toca na linha pra arrumar.`,
       );
     }
-    if (hadBalance) warnings.push('A linha tem mais de um valor (provável coluna de saldo); usei sempre o primeiro.');
+    if (hadBalance) warnings.push('Tinha mais de um valor por linha (deve ser a coluna de saldo), então peguei sempre o primeiro.');
     const transfers = rows.filter((r) => /transfer[eê]ncia|\bpix\b|\bted\b|\bdoc\b/i.test(r.description)).length;
     if (transfers >= 3) {
       warnings.push(
-        `${transfers} lançamentos são transferências. As que forem entre as suas próprias contas não são receita nem gasto: toque nelas e escolha a categoria "Transferência / fatura" para ficarem fora das contas.`,
+        `Achei ${transfers} transferências aqui. As que forem entre as suas próprias contas não são nem receita nem gasto: toca nelas e põe em "Transferência / fatura" pra elas ficarem fora da conta.`,
       );
     }
   }
@@ -740,7 +740,7 @@ export function parsePdf(bytes: Uint8Array): ParseResult {
       format: 'pdf',
       rows: [],
       skipped: 0,
-      warnings: ['Este PDF está protegido por senha, então o texto não pode ser lido. Exporte o extrato em CSV ou OFX, ou salve o PDF sem senha.'],
+      warnings: ['Esse PDF tá com senha, então não consigo ler o texto. Salva ele sem senha ou baixa o extrato em CSV/OFX.'],
       looksLikeCardInvoice: false,
     };
   }

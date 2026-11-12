@@ -37,7 +37,7 @@ export default function Lancamentos() {
         <MonthSwitcher month={month} onChange={setMonth} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.card, borderRadius: radius.md, borderWidth: 1, borderColor: t.border, paddingHorizontal: 12 }}>
           <Icon name="search" size={18} color={t.muted} />
-          <TextInput value={query} onChangeText={setQuery} placeholder="Buscar lançamento ou categoria" placeholderTextColor={t.muted} style={{ flex: 1, paddingVertical: 10, color: t.text, fontSize: 15 }} />
+          <TextInput value={query} onChangeText={setQuery} placeholder="Procurar um gasto ou categoria" placeholderTextColor={t.muted} style={{ flex: 1, paddingVertical: 10, color: t.text, fontSize: 15 }} />
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Chip label="Todos" selected={filter === 'all'} onPress={() => setFilter('all')} />
@@ -51,7 +51,7 @@ export default function Lancamentos() {
         keyExtractor={(x) => x.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
         stickySectionHeadersEnabled={false}
-        ListEmptyComponent={<Txt variant="muted" style={{ textAlign: 'center', marginTop: 40 }}>Nenhum lançamento neste mês.</Txt>}
+        ListEmptyComponent={<Txt variant="muted" style={{ textAlign: 'center', marginTop: 40 }}>Nada lançado nesse mês ainda.</Txt>}
         renderSectionHeader={({ section }) => <Txt variant="small" style={{ marginTop: 14, marginBottom: 6, textTransform: 'capitalize' }}>{section.title}</Txt>}
         renderItem={({ item, index, section }) => (
           <Pressable

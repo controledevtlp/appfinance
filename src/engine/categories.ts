@@ -11,10 +11,11 @@ export const CATEGORIES: Category[] = [
   { id: 'moradia', name: 'Moradia', group: 'necessidades', icon: 'home', idealPct: 20 , short: 'Moradia' },
   { id: 'contas', name: 'Contas (luz, água, internet)', group: 'necessidades', icon: 'flash', idealPct: 5 , short: 'Contas' },
   { id: 'mercado', name: 'Mercado', group: 'necessidades', icon: 'cart', idealPct: 10 , short: 'Mercado' },
-  { id: 'transporte', name: 'Transporte', group: 'necessidades', icon: 'bus', idealPct: 6 , short: 'Transporte' },
+  { id: 'transporte', name: 'Transporte', group: 'necessidades', icon: 'bus', idealPct: 5, short: 'Transporte' },
   { id: 'saude', name: 'Saúde', group: 'necessidades', icon: 'medkit', idealPct: 3 , short: 'Saúde' },
   { id: 'educacao', name: 'Educação', group: 'necessidades', icon: 'school', idealPct: 2 , short: 'Educação' },
-  { id: 'dividas', name: 'Dívidas e parcelas', group: 'necessidades', icon: 'card', idealPct: 4 , short: 'Dívidas' },
+  { id: 'veiculo', name: 'Financiamento do carro/moto', group: 'necessidades', icon: 'car-sport', idealPct: 3, short: 'Carro/Moto' },
+  { id: 'dividas', name: 'Outras dívidas e parcelas', group: 'necessidades', icon: 'card', idealPct: 2, short: 'Dívidas' },
   // ---- Desejos (30%) ----
   { id: 'delivery', name: 'Restaurantes e delivery', group: 'desejos', icon: 'fast-food', idealPct: 7 , short: 'Delivery' },
   { id: 'lazer', name: 'Lazer e viagens', group: 'desejos', icon: 'game-controller', idealPct: 6 , short: 'Lazer' },
@@ -45,7 +46,10 @@ export const GROUP_LABEL = {
  * contrato, renegociação ou mudança de plano). O plano de melhoria dessas
  * categorias é renegociar, não "cortar um terço por mês".
  */
-export const FIXED_COST_CATEGORIES = new Set(['moradia', 'contas', 'saude', 'educacao', 'dividas']);
+export const FIXED_COST_CATEGORIES = new Set(['moradia', 'contas', 'saude', 'educacao', 'dividas', 'veiculo']);
+
+/** Tudo que é dívida, para medir quanto da renda já está comprometido. */
+export const DEBT_CATEGORIES = ['dividas', 'veiculo'] as const;
 
 /** Onde o cartão alimentação pode ser usado: mercado e alimentação fora de casa. */
 export const FOOD_CATEGORIES = ['mercado', 'delivery'] as const;

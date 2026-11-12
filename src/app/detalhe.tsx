@@ -93,15 +93,15 @@ export default function Detalhe() {
           </Txt>
           <Txt variant="small">
             {list.length} {list.length === 1 ? 'lançamento' : 'lançamentos'}
-            {list.length > 1 ? ` · média de ${formatBRL(Math.round(gross / list.length))}` : ''}
+            {list.length > 1 ? ` · na média, ${formatBRL(Math.round(gross / list.length))} cada` : ''}
           </Txt>
           {usage ? (
             <>
               <Bar ratio={usage.ratio} markerAt={1} color={usage.status === 'over' ? t.over : usage.status === 'warning' ? t.warning : t.ok} />
               <Txt variant="small">
                 {usage.status === 'over'
-                  ? `Passou ${formatBRL(usage.spentCents - usage.limitCents)} do ideal de ${formatBRL(usage.limitCents)}.`
-                  : `Dentro do ideal: teto de ${formatBRL(usage.limitCents)}.`}
+                  ? `Passou ${formatBRL(usage.spentCents - usage.limitCents)} do que cabia, que era ${formatBRL(usage.limitCents)}.`
+                  : `Tá dentro. O teto aqui é ${formatBRL(usage.limitCents)}.`}
               </Txt>
             </>
           ) : null}
@@ -135,13 +135,13 @@ export default function Detalhe() {
 
       {list.length === 0 ? (
         <Appear index={2}>
-          <Empty icon="search-outline" title="Nada aqui" text={`Nenhum lançamento de ${title.toLowerCase()} em ${monthLabel(month)}.`} />
+          <Empty icon="search-outline" title="Nada por aqui" text={`Não tem nenhum lançamento de ${title.toLowerCase()} em ${monthLabel(month)}.`} />
         </Appear>
       ) : (
         <Appear index={2}>
           <Card>
-            <Txt variant="h2">Do maior para o menor</Txt>
-            <Txt variant="small">Toque para abrir, renomear ou mudar a categoria.</Txt>
+            <Txt variant="h2">Do maior pro menor</Txt>
+            <Txt variant="small">Toca pra abrir, dar um nome ou mudar a categoria.</Txt>
             {list.map((x) => (
               <Press key={x.id} onPress={() => router.push({ pathname: '/transacao', params: { id: x.id } })}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 }}>

@@ -5,56 +5,62 @@ import { groupingKey } from './categorizer';
 import { formatBRL } from './money';
 import type { MonthSummary, Settings, Tip, TipSeverity, Transaction } from './types';
 
-/** Ações práticas por categoria, usadas nos planos de redução. */
+/** Conselho prático por categoria, no tom de um amigo falando com você. */
 const ADVICE: Record<string, string[]> = {
   moradia: [
-    'Renegocie o aluguel ou o condomínio (peça desconto para pagamento em dia ou contrato mais longo).',
-    'Avalie dividir a moradia ou mudar para uma região mais barata quando o contrato vencer.',
+    'Liga pro dono ou pra imobiliária e pede desconto. Quem paga em dia e quer renovar contrato tem margem pra negociar.',
+    'Se o contrato tá perto de vencer, dá uma olhada em aluguel mais barato ou em dividir com alguém. É chato, mas moradia é o que mais pesa.',
   ],
   contas: [
-    'Compare planos de internet e celular: muitas operadoras cobrem a oferta do concorrente.',
-    'Reduza o consumo de energia: banhos mais curtos, lâmpadas LED e standby desligado.',
+    'Liga pra operadora e pergunta qual o plano mais barato de hoje. Quase sempre tem um melhor que o seu, eles só não te avisam.',
+    'Fala que você tá pensando em cancelar. O pessoal da retenção libera desconto que o atendimento normal nem oferece.',
+    'Banho mais curto, luz apagada e aparelho fora da tomada. Parece besteira, mas aparece na conta.',
   ],
   mercado: [
-    'Faça lista antes de ir e compre uma vez por semana (menos idas = menos compras por impulso).',
-    'Compare o preço por kg/litro e dê preferência a marcas próprias e hortifruti da estação.',
-    'Evite ir ao mercado com fome e deixe de comprar produtos prontos.',
+    'Vai uma vez por semana, com lista. Cada ida extra é dinheiro saindo sem você perceber.',
+    'Nunca vá com fome. Essa é regra de ouro, senão o carrinho enche de porcaria.',
+    'Compara o preço por quilo e dá uma chance pra marca própria. O gosto é quase igual, o preço não.',
   ],
   transporte: [
-    'Compare combustível pelo app do posto e abasteça no mais barato do seu trajeto.',
-    'Troque 2 corridas de aplicativo por semana por transporte público ou carona.',
-    'Revise seguro e IPVA: cotar de novo todo ano costuma baixar o valor.',
+    'Abastece sempre no posto mais barato do seu caminho. Dá pra ver no app antes de sair de casa.',
+    'Troca duas corridas de app por semana por ônibus ou carona. Só isso já dá uma diferença boa no fim do mês.',
+    'Cota o seguro de novo todo ano. Renovar no automático é o jeito mais fácil de pagar caro.',
   ],
   saude: [
-    'Compare o plano de saúde atual com opções por coparticipação ou o benefício da empresa.',
-    'Use genéricos e programas de desconto das farmácias.',
+    'Compara seu plano com o da empresa e com os de coparticipação. Muita gente paga por cobertura que nunca usa.',
+    'Pede sempre o genérico e usa os programas de desconto da farmácia. É o mesmo remédio.',
   ],
-  educacao: ['Procure bolsas, cursos gratuitos e planos anuais, que costumam sair mais baratos.'],
+  educacao: ['Procura bolsa, curso gratuito ou plano anual. Mensalidade cheia costuma ser a opção mais cara.'],
+  veiculo: [
+    'Vê a portabilidade do financiamento pra outro banco com juro menor. Dá um trabalho, mas pode economizar alguns milhares.',
+    'Se a parcela tá sufocando, trocar por algo mais barato não é derrota, é esperteza. Carro parado na garagem não paga boleto.',
+    'Antes de quitar adiantado, pede o cálculo com desconto de juros. Só vale se a conta fechar de verdade.',
+  ],
   dividas: [
-    'Priorize quitar primeiro a dívida com maior juros (rotativo do cartão e cheque especial).',
-    'Peça renegociação ou portabilidade do crédito para uma taxa menor.',
-    'Nunca pague só o mínimo da fatura: o rotativo é uma das taxas mais caras do mercado.',
+    'Ataca primeiro a mais cara: rotativo do cartão e cheque especial. Os juros desses dois são absurdos.',
+    'Liga e pede pra renegociar. Banco prefere receber menos do que não receber nada.',
+    'Nunca pague só o mínimo da fatura. É a armadilha mais cara que existe e você não sai dela sozinho.',
   ],
   delivery: [
-    'Defina um teto semanal (ex.: 2 pedidos) e registre cada um no app.',
-    'Cozinhe em lote no domingo e leve marmita nos dias úteis.',
-    'Reserve o delivery para o fim de semana e use cupons só quando já fosse pedir.',
+    'Define um teto e segura: dois pedidos por semana, por exemplo.',
+    'Cozinha no domingo e congela. Durante a semana você só esquenta e economiza um dinheirão.',
+    'Deixa o delivery pro fim de semana. Na semana vira hábito, e hábito come salário.',
   ],
   lazer: [
-    'Defina um valor fixo de lazer por semana e use dinheiro/cartão pré-pago para respeitá-lo.',
-    'Troque parte dos programas pagos por opções gratuitas (parques, eventos públicos, encontros em casa).',
+    'Separa um valor fixo por semana pra se divertir e respeita. Pode gastar, só não pode passar.',
+    'Alterna com programa de graça: parque, praça, evento público, encontro na casa de alguém. Dá pra se divertir sem torrar.',
   ],
   compras: [
-    'Adote a regra das 48 horas: espere 2 dias antes de qualquer compra não essencial.',
-    'Coloque o desejo em uma lista e compre só se ainda fizer sentido no fim do mês.',
-    'Desinstale apps de loja e cancele as notificações de promoção.',
+    'Regra das 48 horas: viu, quis, espera dois dias. Na maioria das vezes a vontade passa sozinha.',
+    'Anota numa lista de desejos. Se no fim do mês ainda fizer sentido, compra.',
+    'Desinstala os apps de loja e desliga as notificações de promoção. Promoção que você não vê não te pega.',
   ],
   assinaturas: [
-    'Liste todas as assinaturas e cancele as que você não usou nos últimos 30 dias.',
-    'Divida planos familiares ou alterne entre streamings (um por mês).',
+    'Lista todas e cancela sem dó o que você não abriu nos últimos 30 dias.',
+    'Divide plano família ou assina um por vez, revezando. Ninguém assiste cinco ao mesmo tempo.',
   ],
-  cuidados: ['Espace as visitas ao salão e compare preços; produtos em refil costumam ser mais baratos.'],
-  outros: ['Detalhe esses gastos em categorias específicas: o que não tem nome costuma escapar do controle.'],
+  cuidados: ['Espaça um pouco as idas ao salão e compara preço. Produto em refil sai bem mais barato.'],
+  outros: ['Vale detalhar esses gastos em categorias certas. O que não tem nome é o que mais escapa.'],
 };
 
 /** Excessos menores que R$ 20 não geram plano de redução. */
@@ -115,10 +121,10 @@ export function generateTips(
     tips.push({
       id: 'sem-renda',
       severity: 'info',
-      title: 'Informe sua renda para calcular o ideal',
-      message: 'Sem a renda líquida mensal não dá para calcular quanto gastar em cada categoria.',
+      title: 'Me conta quanto você ganha',
+      message: 'Sem saber sua renda eu não consigo te dizer quanto dá pra gastar em cada coisa. É rapidinho.',
       savingsCents: 0,
-      steps: ['Abra Ajustes e preencha “Renda líquida mensal”, ou lance suas receitas do mês.'],
+      steps: ['Abre a tela "Minha renda" e preenche o que cai na sua conta por mês. Leva 30 segundos.'],
     });
     return tips;
   }
@@ -137,23 +143,23 @@ export function generateTips(
     // Gasto variável dá para reduzir aos poucos; custo fixo só muda com renegociação.
     const plan = isFixed
       ? [
-          `Este é um custo fixo: não dá para cortar ${formatBRL(third)} no mês que vem sem mexer no contrato.`,
-          `O excesso é ${formatBRL(gap)} por mês — é o que você ganha renegociando ou trocando de plano.`,
-          'Enquanto isso não muda, compense com um teto menor nos gastos variáveis (delivery, compras, lazer).',
+          `Essa é conta fixa, então não adianta eu mandar cortar ${formatBRL(third)} no mês que vem: não dá, tá no contrato.`,
+          `O excesso é ${formatBRL(gap)} por mês. É exatamente isso que você ganha se renegociar ou trocar de plano.`,
+          'Enquanto isso não rola, compensa apertando o que é variável: delivery, compras e lazer.',
         ]
       : [
-          `Mês 1: corte ${formatBRL(third)} (um terço do excesso).`,
-          `Mês 2: corte mais ${formatBRL(third)}, somando ${formatBRL(third * 2)}.`,
-          `Mês 3: chegue ao ideal de ${formatBRL(u.limitCents)} (economia total de ${formatBRL(gap)}/mês).`,
+          `Mês 1: corta ${formatBRL(third)}. É um terço do excesso, dá pra fazer sem sofrer.`,
+          `Mês 2: corta mais ${formatBRL(third)}, somando ${formatBRL(third * 2)}.`,
+          `Mês 3: chega em ${formatBRL(u.limitCents)} e pronto: são ${formatBRL(gap)} sobrando todo mês.`,
         ];
     tips.push({
       id: `over:${u.category.id}`,
       severity: u.ratio > 1.3 ? 'alerta' : 'atencao',
       categoryId: u.category.id,
-      title: `${u.category.name}: ${pct}% acima do ideal`,
+      title: `${u.category.name} tá ${pct}% acima do que cabe`,
       message: isFixed
-        ? `Você gastou ${formatBRL(u.spentCents)} e o ideal para a sua renda é ${formatBRL(u.limitCents)}. Como é custo fixo, os ${formatBRL(gap)} de excesso só caem renegociando.`
-        : `Você gastou ${formatBRL(u.spentCents)} e o ideal para a sua renda é ${formatBRL(u.limitCents)}. Chegar ao ideal libera ${formatBRL(gap)} por mês.`,
+        ? `Você gastou ${formatBRL(u.spentCents)} e o que caberia na sua renda é ${formatBRL(u.limitCents)}. Como é conta fixa, esses ${formatBRL(gap)} a mais só somem renegociando.`
+        : `Você gastou ${formatBRL(u.spentCents)} e o que caberia é ${formatBRL(u.limitCents)}. Ajustando isso, sobram ${formatBRL(gap)} todo mês no seu bolso.`,
       savingsCents: gap,
       steps: [...plan, ...(ADVICE[u.category.id] ?? [])],
     });
@@ -182,11 +188,11 @@ export function generateTips(
         id: `growth:${u.category.id}`,
         severity: 'atencao',
         categoryId: u.category.id,
-        title: `${u.category.name} subiu em relação ao mês passado`,
-        message: `Gasto de ${formatBRL(u.spentCents)} contra ${formatBRL(before)} no mesmo período do mês passado (+${formatBRL(diff)}).`,
+        title: `${u.category.name} disparou esse mês`,
+        message: `Você já gastou ${formatBRL(u.spentCents)} contra ${formatBRL(before)} no mesmo período do mês passado. São ${formatBRL(diff)} a mais.`,
         savingsCents: diff,
         steps: [
-          'Abra os lançamentos da categoria e veja o que mudou (compra única ou hábito novo).',
+          'Abre os lançamentos e vê o que mudou: foi uma compra única ou virou hábito novo?',
           ...(ADVICE[u.category.id]?.slice(0, 2) ?? []),
         ],
       });
@@ -204,8 +210,8 @@ export function generateTips(
       id: 'assinaturas',
       severity: 'info',
       categoryId: 'assinaturas',
-      title: `${subs.length} assinaturas somam ${formatBRL(total)}/mês`,
-      message: `São ${formatBRL(total * 12)} por ano. Cancelar uma economiza de ${formatBRL(cheapest)} a ${formatBRL(dearest)} por mês.`,
+      title: `${subs.length} assinaturas comendo ${formatBRL(total)} por mês`,
+      message: `Isso dá ${formatBRL(total * 12)} no ano. Cancelando uma só você já guarda de ${formatBRL(cheapest)} a ${formatBRL(dearest)} por mês. Qual delas você abriu essa semana mesmo?`,
       savingsCents: cheapest,
       steps: [
         ...subs.slice(0, 5).map((s) => `${s.name}: ${formatBRL(s.monthlyCents)}/mês`),
@@ -225,14 +231,14 @@ export function generateTips(
     tips.push({
       id: 'tarifas',
       severity: 'alerta',
-      title: `Você pagou ${formatBRL(fees)} em juros e tarifas`,
-      message: 'Esse dinheiro não compra nada: dá para eliminar quase tudo com algumas ligações.',
+      title: `${formatBRL(fees)} jogados fora em juros e tarifa`,
+      message: 'Esse dinheiro não virou nada. Nadinha. E o pior: dá pra zerar quase tudo com umas ligações.',
       savingsCents: feesNotCounted,
       steps: [
-        'Pague a fatura do cartão sempre pelo valor total para fugir do rotativo.',
-        'Peça isenção ou desconto na anuidade do cartão (ou troque por um sem anuidade).',
-        'Migre para uma conta digital sem tarifa de manutenção.',
-        'Programe os pagamentos no débito automático para evitar multa por atraso.',
+        'Paga a fatura do cartão sempre inteira. O rotativo é o juro mais caro que existe.',
+        'Liga e pede isenção da anuidade. Se não rolar, troca por um sem anuidade, tem vários.',
+        'Conta digital sem tarifa resolve a cesta de serviços. Não tem motivo pra pagar isso hoje.',
+        'Bota no débito automático o que vive atrasando. Multa por esquecimento é dinheiro queimado.',
       ],
     });
   }
@@ -247,13 +253,13 @@ export function generateTips(
       tips.push({
         id: 'poupanca',
         severity: 'alerta',
-        title: 'Você está gastando mais do que ganha',
-        message: `Os gastos passaram a renda em ${formatBRL(-saved)}. Isso vira dívida se continuar.`,
+        title: 'Opa, você tá gastando mais do que ganha',
+        message: `Os gastos passaram a renda em ${formatBRL(-saved)}. Se continuar assim vai dar merda: isso vira dívida, dívida vira juros, e aí complica pra valer.`,
         savingsCents: Math.max(0, target - saved),
         steps: [
-          'Corte primeiro os desejos (delivery, compras, lazer) até o saldo voltar a ficar positivo.',
-          'Evite parcelar novas compras neste período.',
-          'Veja as dicas por categoria abaixo: elas mostram onde está o maior excesso.',
+          'Corta os desejos primeiro: delivery, compras e lazer. Só até o saldo voltar pro positivo.',
+          'Não parcela nada novo agora. Parcela nova é problema do seu eu do mês que vem.',
+          'Olha as dicas aqui embaixo, elas mostram exatamente onde tá o rombo.',
         ],
       });
     } else if (!monthClosed) {
@@ -262,31 +268,31 @@ export function generateTips(
       tips.push({
         id: 'poupanca',
         severity: 'atencao',
-        title: `Taxa de poupança baixa: ${summary.savingsRatePct.toFixed(0)}%`,
-        message: `A meta é guardar 20% da renda (${formatBRL(target)}). Hoje sobram ${formatBRL(saved)}.`,
+        title: `Tá sobrando pouco: só ${summary.savingsRatePct.toFixed(0)}%`,
+        message: `O ideal é guardar 20% do que entra, que daria ${formatBRL(target)}. Hoje sobram ${formatBRL(saved)}.`,
         savingsCents: Math.max(0, target - saved),
         steps: [
-          'Programe uma transferência automática para investimentos logo no dia do salário.',
-          'Comece pequeno: 5% agora e suba 1 ponto percentual por mês.',
+          'Programa a transferência automática pro dia do salário. O que não passa pela conta você não gasta.',
+          'Começa pequeno: 5% agora e sobe um ponto por mês. Daqui a um ano você nem sente.',
         ],
       });
     } else if (summary.savingsRatePct < 20) {
       tips.push({
         id: 'poupanca',
         severity: 'info',
-        title: `Quase lá: poupança de ${summary.savingsRatePct.toFixed(0)}%`,
-        message: `Faltam ${formatBRL(Math.max(0, target - saved))} por mês para chegar à meta de 20%.`,
+        title: `Tá quase lá: ${summary.savingsRatePct.toFixed(0)}% guardados`,
+        message: `Falta pouco, só ${formatBRL(Math.max(0, target - saved))} por mês pra bater os 20%.`,
         savingsCents: Math.max(0, target - saved),
-        steps: ['Automatize o aporte e some qualquer economia dos planos de redução abaixo.'],
+        steps: ['Automatiza o aporte e joga nele qualquer economia das dicas aqui de cima.'],
       });
     } else {
       tips.push({
         id: 'poupanca',
         severity: 'positivo',
-        title: `Ótimo: você poupa ${summary.savingsRatePct.toFixed(0)}% da renda`,
-        message: 'Está dentro ou acima da meta de 20%. Mantenha o ritmo e invista o que sobra.',
+        title: `Mandou bem: ${summary.savingsRatePct.toFixed(0)}% guardados`,
+        message: 'Tá na meta ou acima dela. É assim mesmo, segura esse ritmo.',
         savingsCents: 0,
-        steps: ['Direcione o excedente para a reserva de emergência e depois para objetivos de longo prazo.'],
+        steps: ['Manda o que sobra pra reserva primeiro. Depois a gente pensa em prazo mais longo.'],
       });
     }
   }
@@ -297,8 +303,8 @@ export function generateTips(
       id: 'dividas',
       severity: 'alerta',
       categoryId: 'dividas',
-      title: `Dívidas comprometem ${summary.debtRatioPct.toFixed(0)}% da renda`,
-      message: 'Acima de 30% o orçamento fica sem folga para imprevistos.',
+      title: `Dívida tá comendo ${summary.debtRatioPct.toFixed(0)}% do seu salário`,
+      message: 'Passando de 30% o orçamento fica sem folga nenhuma. Aí qualquer imprevisto vira bola de neve.',
       savingsCents: 0,
       steps: ADVICE.dividas,
     });
@@ -311,22 +317,22 @@ export function generateTips(
       tips.push({
         id: 'reserva',
         severity: reserve.monthsCovered < 1 ? 'alerta' : 'atencao',
-        title: `Reserva cobre só ${reserve.monthsCovered.toFixed(1).replace('.', ',')} mês(es)`,
-        message: `A meta é 6 meses de custos essenciais (${formatBRL(reserve.targetCents)}). Guardando ${formatBRL(reserve.suggestedMonthlyCents)} por mês você chega lá em 12 meses.`,
+        title: `Sua reserva dura ${reserve.monthsCovered.toFixed(1).replace('.', ',')} mês. Tá curto.`,
+        message: `O ideal é ter 6 meses de custo essencial guardado, que no seu caso dá ${formatBRL(reserve.targetCents)}. Separando ${formatBRL(reserve.suggestedMonthlyCents)} por mês, em um ano você chega lá.`,
         savingsCents: 0,
         steps: [
-          `Aporte mensal sugerido: ${formatBRL(reserve.suggestedMonthlyCents)}.`,
-          'Deixe a reserva em investimento com liquidez diária (Tesouro Selic ou CDB de liquidez diária).',
+          `Mira em ${formatBRL(reserve.suggestedMonthlyCents)} por mês. Não precisa ser perfeito, precisa ser todo mês.`,
+          'Deixa num lugar de onde dá pra tirar no mesmo dia: Tesouro Selic ou CDB de liquidez diária.',
         ],
       });
     } else if (reserve.monthsCovered >= 6) {
       tips.push({
         id: 'reserva',
         severity: 'positivo',
-        title: 'Reserva de emergência completa',
-        message: 'Você já cobre 6 meses ou mais de custos essenciais.',
+        title: 'Reserva completa. Parabéns, sério.',
+        message: 'Você já tem 6 meses ou mais de custo essencial guardado. Isso é tranquilidade, e pouca gente chega aqui.',
         savingsCents: 0,
-        steps: ['Novos aportes podem ir para metas de longo prazo.'],
+        steps: ['Daqui pra frente, o que sobrar pode ir pra objetivo de prazo mais longo.'],
       });
     }
   }
@@ -336,10 +342,10 @@ export function generateTips(
     tips.push({
       id: 'projecao',
       severity: 'atencao',
-      title: 'No ritmo atual, o mês fecha estourado',
-      message: `Projeção de ${formatBRL(summary.projectedExpenseCents)} em gastos (${Math.round((summary.projectedExpenseCents / base) * 100)}% da renda); o ideal é até 80%.`,
+      title: 'Do jeito que tá indo, o mês fecha no vermelho',
+      message: `Nesse ritmo você fecha em ${formatBRL(summary.projectedExpenseCents)}, que é ${Math.round((summary.projectedExpenseCents / base) * 100)}% da sua renda. O ideal é não passar de 80%.`,
       savingsCents: Math.max(0, summary.projectedExpenseCents - Math.round(base * 0.8)),
-      steps: ['Segure gastos de desejos até o fim do mês e confira as categorias em amarelo e vermelho.'],
+      steps: ['Segura a onda nos desejos até virar o mês e dá uma olhada no que tá amarelo e vermelho.'],
     });
   }
 
@@ -364,9 +370,9 @@ export function totalPotentialSavings(tips: Tip[]): number {
  */
 
 const IR_TABLE =
-  'O imposto cai com o tempo: 22,5% até 180 dias, 20% até 360, 17,5% até 720 e 15% acima disso. Prazo mais longo rende mais líquido.';
+  'O imposto cai com o tempo: 22,5% até 180 dias, 20% até 360, 17,5% até 720 e 15% depois disso. Ou seja: quanto mais você deixa parado, mais sobra no seu bolso.';
 
-const CONFERIR = 'Confirme as taxas e regras atuais antes de investir: elas mudam.';
+const CONFERIR = 'Confere as taxas e as regras antes de aplicar, que isso muda direto.';
 
 export function investmentTips(
   txs: Transaction[],
@@ -388,14 +394,14 @@ export function investmentTips(
       id: 'inv-reserva',
       kind: 'investimento',
       severity: reserve.monthsCovered < 3 ? 'atencao' : 'info',
-      title: 'Onde deixar a reserva de emergência',
-      message: `Faltam ${formatBRL(Math.max(0, reserve.targetCents - reserve.balanceCents))} para os 6 meses. Reserva precisa de duas coisas: render todo dia e poder ser sacada no mesmo dia.`,
+      title: 'Onde guardar a sua reserva',
+      message: `Faltam ${formatBRL(Math.max(0, reserve.targetCents - reserve.balanceCents))} pros 6 meses. Reserva tem que fazer duas coisas: render todo dia e sair na hora que você precisar.`,
       savingsCents: 0,
       steps: [
-        'Tesouro Selic: título público, acompanha a taxa Selic e tem liquidez diária. É o mais simples para começar.',
-        'CDB de liquidez diária que pague perto de 100% do CDI ou mais. Tem garantia do FGC até R$ 250 mil por instituição e por CPF.',
-        'Fuja da poupança para esse dinheiro: com a Selic acima de 8,5% ao ano ela rende menos que as opções acima.',
-        'Não use previdência, fundo com carência ou CDB de vencimento longo para a reserva: o dinheiro precisa estar disponível hoje.',
+        'Tesouro Selic: título do governo, acompanha a Selic e você saca quando quiser. É o jeito mais simples de começar.',
+        'CDB de liquidez diária pagando perto de 100% do CDI ou mais. Tem garantia do FGC até R$ 250 mil por banco e por CPF, então é seguro.',
+        'Tira da poupança. Com a Selic alta ela rende menos que as opções acima, é dinheiro parado perdendo valor.',
+        'Nada de previdência ou fundo com carência pra reserva. Se você não consegue sacar hoje, não é reserva.',
         CONFERIR,
       ],
     });
@@ -407,14 +413,14 @@ export function investmentTips(
       id: 'inv-prazo',
       kind: 'investimento',
       severity: 'positivo',
-      title: 'Reserva pronta: agora o critério é prazo',
-      message: 'Com a emergência coberta, cada dinheiro vai para um prazo diferente. Quanto mais tempo você consegue deixar, mais ele rende líquido.',
+      title: 'Reserva feita. Agora é escolher o prazo.',
+      message: 'Com a emergência coberta, o jogo muda: cada dinheiro vai pro prazo dele. Quanto mais tempo você aguenta deixar, mais rende.',
       savingsCents: 0,
       steps: [
-        'Até 2 anos (viagem, troca de carro): CDB, LCI ou LCA pós-fixados, em % do CDI. LCI e LCA hoje são isentas de imposto de renda para pessoa física.',
-        'De 5 anos para cima (aposentadoria, entrada de imóvel): Tesouro IPCA+ garante ganho acima da inflação, desde que você leve até o vencimento.',
+        'Dinheiro pra até 2 anos (viagem, trocar de carro): CDB, LCI ou LCA pós-fixado, em % do CDI. LCI e LCA hoje não pagam imposto de renda pra pessoa física.',
+        'Dinheiro pra 5 anos ou mais (aposentadoria, entrada de imóvel): Tesouro IPCA+ garante ganho acima da inflação, desde que você segure até o vencimento.',
         IR_TABLE,
-        'Compare sempre pelo líquido: um CDB de 110% do CDI com imposto pode render menos que uma LCI isenta de 95%.',
+        'Compara sempre pelo líquido. Um CDB de 110% do CDI com imposto pode render menos que uma LCI isenta de 95%. Taxa grande não quer dizer nada sozinha.',
         CONFERIR,
       ],
     });
@@ -426,13 +432,13 @@ export function investmentTips(
       id: 'inv-parado',
       kind: 'investimento',
       severity: 'atencao',
-      title: `Sobraram ${formatBRL(leftover)} e nada foi investido`,
-      message: 'Dinheiro parado na conta corrente perde para a inflação todo mês, em silêncio.',
+      title: `Sobraram ${formatBRL(leftover)} parados na conta`,
+      message: 'Dinheiro parado na conta corrente perde pra inflação todo mês, caladinho. Não dói na hora, mas dói.',
       savingsCents: 0,
       steps: [
-        'Programe uma transferência automática para o dia seguinte ao salário: o que não passa pela conta não é gasto.',
-        'Comece pelo Tesouro Selic ou por um CDB de liquidez diária, que deixam sacar a qualquer momento.',
-        `Mesmo ${formatBRL(Math.round(leftover / 2))} por mês já constroem a reserva — o valor importa menos que a constância.`,
+        'Programa a transferência pro dia seguinte ao salário. O que não passa pela conta você não gasta.',
+        'Começa pelo Tesouro Selic ou por um CDB de liquidez diária. Dá pra sacar quando quiser, então não tem risco de travar.',
+        `Mesmo ${formatBRL(Math.round(leftover / 2))} por mês já constroem a reserva. O valor importa menos que fazer todo mês.`,
         CONFERIR,
       ],
     });
@@ -445,12 +451,12 @@ export function investmentTips(
       id: 'inv-ritmo',
       kind: 'investimento',
       severity: 'positivo',
-      title: `Você investiu ${formatBRL(summary.investedCents)} (${pct.toFixed(0)}% da renda)`,
-      message: pct >= 20 ? 'Está no ritmo da meta de 20%. Agora o ganho vem de escolher bem o prazo.' : 'Bom ritmo. Subir um ponto percentual por mês quase não se sente no orçamento.',
+      title: `Você guardou ${formatBRL(summary.investedCents)} esse mês`,
+      message: pct >= 20 ? `São ${pct.toFixed(0)}% da renda, tá na meta. Agora o ganho vem de escolher bem o prazo.` : `São ${pct.toFixed(0)}% da renda. Bom ritmo. Subir um ponto por mês quase não se sente no bolso.`,
       savingsCents: 0,
       steps: [
-        'Revise uma vez por ano se o que você tem ainda paga perto de 100% do CDI; produtos antigos costumam ficar para trás.',
-        'Evite resgatar antes de 180 dias: é a faixa de imposto mais alta, 22,5%.',
+        'Uma vez por ano, confere se o que você tem ainda paga perto de 100% do CDI. Produto antigo costuma ficar pra trás e ninguém avisa.',
+        'Evita resgatar antes de 180 dias. É a faixa de imposto mais alta, 22,5%, e dói à toa.',
         CONFERIR,
       ],
     });

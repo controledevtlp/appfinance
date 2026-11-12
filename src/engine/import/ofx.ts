@@ -32,6 +32,6 @@ export function parseOfx(text: string): ParseResult {
       bankId: tag(block, 'FITID'),
     });
   }
-  if (!blocks.length) warnings.push('Nenhuma transação (STMTTRN) encontrada no arquivo OFX.');
+  if (!blocks.length) warnings.push('Não achei nenhuma transação nesse arquivo OFX.');
   return { format: 'ofx', rows, skipped, warnings, looksLikeCardInvoice: false };
 }

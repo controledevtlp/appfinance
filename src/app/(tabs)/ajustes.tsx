@@ -65,9 +65,9 @@ export default function Ajustes() {
     <Screen>
       <Appear index={0}>
       <Card>
-        <Txt variant="h2">Sua base de cálculo</Txt>
-        <Button title="Detalhar minha renda" icon="cash-outline" variant="ghost" onPress={() => router.push('/renda')} />
-        <Field label="Renda líquida mensal (R$)" value={income} onChangeText={setIncome} keyboardType="decimal-pad" placeholder="ex.: 6500,00" hint="O que cai na conta depois dos descontos. Define o ideal de cada categoria." />
+        <Txt variant="h2">A base de tudo</Txt>
+        <Button title="Detalhar o que eu ganho" icon="cash-outline" variant="ghost" onPress={() => router.push('/renda')} />
+        <Field label="Renda líquida mensal (R$)" value={income} onChangeText={setIncome} keyboardType="decimal-pad" placeholder="ex.: 6500,00" hint="O que cai na sua conta depois dos descontos. É daqui que sai o limite de cada categoria." />
         <Field label="Reserva de emergência atual (R$)" value={reserve} onChangeText={setReserve} keyboardType="decimal-pad" placeholder="ex.: 9000,00" hint={`Meta: 6 meses de custos essenciais. Hoje: ${formatBRL(settings.emergencyBalanceCents)}.`} />
         <Button title="Salvar" onPress={saveValues} loading={busy} />
       </Card>
@@ -75,19 +75,19 @@ export default function Ajustes() {
 
       <Card>
         <Txt variant="h2">Notificações</Txt>
-        <Row label="Alertas de orçamento" hint="Avisa quando uma categoria chega a 80% ou estoura o limite." k="budgetAlerts" />
-        <Row label="Resumo semanal" hint="Domingo às 19h." k="weeklySummary" />
-        <Row label="Lembrete diário" hint="Todo dia às 20h30, para registrar os gastos." k="dailyReminder" />
+        <Row label="Aviso de limite" hint="Eu te cutuco quando uma categoria chega em 80% ou estoura." k="budgetAlerts" />
+        <Row label="Resumo da semana" hint="Todo domingo, às 19h." k="weeklySummary" />
+        <Row label="Lembrete do dia" hint="Todo dia às 20h30, pra você não esquecer de lançar." k="dailyReminder" />
       </Card>
 
       <Card>
         <Txt variant="h2">Extrato do banco</Txt>
-        <Txt variant="muted">Importe o arquivo CSV ou OFX baixado no app ou internet banking do seu banco. Lançamentos repetidos são ignorados.</Txt>
+        <Txt variant="muted">Baixa o extrato no app do seu banco (CSV, OFX ou PDF) e joga aqui. Se já tiver importado antes, eu não duplico.</Txt>
         <Button title="Importar extrato" icon="cloud-upload-outline" onPress={() => router.push('/importar')} />
       </Card>
 
       <Card>
-        <Txt variant="h2">Conta e dados</Txt>
+        <Txt variant="h2">Sua conta e seus dados</Txt>
         {mode === 'cloud' ? (
           <>
             <Txt variant="muted">Conectado como {session?.user.email}. Seus dados ficam salvos na nuvem e acompanham você em qualquer aparelho.</Txt>
@@ -110,7 +110,7 @@ export default function Ajustes() {
         />
       </Card>
 
-      <Txt variant="small" style={{ textAlign: 'center' }}>Finanças Claras · as dicas são orientações gerais e não substituem um consultor financeiro.</Txt>
+      <Txt variant="small" style={{ textAlign: 'center' }}>Finanças Claras · o que tem aqui é conselho de amigo, não de consultor financeiro. Decisão grande, confere com um profissional.</Txt>
     </Screen>
   );
 }

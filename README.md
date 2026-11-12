@@ -18,6 +18,7 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 
 ### Como os cálculos funcionam (`src/engine`)
 - **Cartão alimentação**: é renda de uso restrito, então não entra na renda livre (a regra 50/30/20 continua saindo do salário) — ele eleva o teto de mercado e alimentação fora, rateado pelos ideais dessas duas categorias, e conta no quanto sobrou no mês.
+- **Financiamento de carro/moto** tem categoria própria (3% da renda como referência), conta como custo fixo no plano de melhoria e entra no comprometimento da renda junto com as outras dívidas. O categorizador reconhece "financiamento do carro", consórcio e as financeiras mais comuns (Banco Honda, BV, Aymoré, Losango, entre outras).
 - **Regra 50/30/20** sobre a renda líquida: 50% necessidades, 30% desejos, 20% poupança. Cada categoria tem um % ideal (ver `categories.ts`) e você pode sobrescrever o limite.
 - **Taxa de poupança** = (renda − gastos de necessidades e desejos) ÷ renda. Meta: 20%.
 - **Reserva de emergência**: meta = 6 × custo médio mensal de necessidades, calculado só com **meses completos** (o mês em andamento ficaria baixo porque as contas ainda não venceram). Sem histórico, estima por 50% da renda.
@@ -29,7 +30,7 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 - Excessos menores que R$ 20 não geram dica.
 - A soma "você libera até X/mês" não conta duas vezes: juros que já estão numa categoria estourada entram uma vez só.
 
-Todo o motor é TypeScript puro e testado: `npm test` (88 testes).
+Todo o motor é TypeScript puro e testado: `npm test` (92 testes).
 
 ## Rodar no computador
 
@@ -89,6 +90,9 @@ O extrato traz "ENEL DISTRIBUICAO SP 0001". No lançamento, o campo **Dê um nom
 ## Dicas de investimento (renda fixa)
 Seção separada na aba Dicas, que acompanha a situação: enquanto a reserva não está completa, fala só de onde deixar a reserva (liquidez diária); depois passa a falar de prazo (pós-fixado para o curto, IPCA+ para o longo), tabela regressiva de IR e comparação pelo líquido. Também avisa quando sobra dinheiro e nada foi investido.
 É **informação geral para estudar, não recomendação** de investimento nem indicação de banco ou corretora, e cada bloco pede para conferir as regras atuais antes de investir — elas mudam.
+
+## O jeito de falar
+O app conversa como um amigo que entende de grana, não como gerente de banco: "Opa, você tá gastando mais do que ganha", "Dá pra guardar R$ 710/mês", "Tá de boa". Quando o buraco é sério, ele fala sério — sem meias palavras. Os números e as regras continuam exatos; o que mudou foi o tom. Os avisos de que isso não é recomendação de investimento continuam onde precisam estar.
 
 ## Cores
 Paleta índigo sobre neutro levemente arroxeado (`src/theme/index.ts`). Nada de branco puro nem preto puro: o contraste máximo cansa a vista em uso longo, então o fundo claro é um cinza-lavanda e o escuro é um carvão arroxeado. Verde e vermelho ficam reservados para entrada e saída de dinheiro, onde a cor precisa significar alguma coisa. A paleta dos gráficos também vem do tema, então ela clareia no modo escuro.

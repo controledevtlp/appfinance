@@ -37,6 +37,8 @@ const RULES: { categoryId: string; re: RegExp; only?: TxType }[] = [
   { categoryId: 'transporte', re: /\buber\b|\b99 ?(pop|taxi|app)?\b|cabify|combustivel|\bposto\b|shell|ipiranga|petrobras|gasolina|etanol|estacionamento|pedagio|sem parar|conectcar|metro|cptm|bilhete unico|onibus|passagem|vlt|oficina|ipva|seguro auto|detran|licenciamento|lava ?jato/ },
   { categoryId: 'saude', re: /farmacia|drogaria|drogasil|raia|pacheco|panvel|pague menos|hospital|clinica|laboratorio|consulta|dentista|odonto|unimed|amil|hapvida|plano de saude|medic|exame|academia|smart ?fit|bluefit|gympass|totalpass|wellhub|psicolog|terapia/ },
   { categoryId: 'educacao', re: /escola|faculdade|universidade|curso|udemy|alura|colegio|mensalidade|livraria|estacio|unip|anhanguera|duolingo|coursera|idioma|ingles/ },
+  // Antes de "dívidas": financiamento de veículo tem categoria própria.
+  { categoryId: 'veiculo', re: /financiamento (do |de )?(carro|veiculo|moto|auto)|presta[cç][aã]o do (carro|moto)|parcela (do|da) (carro|moto|financiamento)|cons[oó]rcio|banco honda|\bhonda\b|bv financeira|aymore|losango|omni financeira|santander financiamento|itau veiculos|porto seguro financ/, only: 'expense' },
   { categoryId: 'dividas', re: /emprestimo|consignado|cheque especial|rotativo|refinanci|renegoc|financiamento|crediario|\bjuros\b|\biof\b|encargo|multa|\bmora\b/ },
   { categoryId: 'cuidados', re: /salao|barbearia|barbeiro|cabeleireir|manicure|estetica|boticario|natura|sephora|perfumaria|beleza|depil|massagem/ },
   { categoryId: 'lazer', re: /cinema|ingresso|teatro|\bshow\b|sympla|eventim|ticketmaster|hotel|airbnb|booking|decolar|latam|gol linhas|azul linhas|passagem aerea|viagem|parque|steam|playstation|xbox|nintendo|clube/ },

@@ -99,7 +99,7 @@ describe('extrato em PDF', () => {
     expect(r.rows.map((x) => x.date)).toEqual(['2026-10-03', '2026-10-15']);
     expect(r.rows.map((x) => x.description)).toEqual(['IFOOD *PEDIDO', 'AMAZON COM BR']);
     expect(r.rows.every((x) => x.amountCents < 0)).toBe(true);
-    expect(r.warnings.join(' ')).toContain('não traziam sinal');
+    expect(r.warnings.join(' ')).toContain('sem sinal');
   });
 
   it('aceita valor escrito com R$', () => {

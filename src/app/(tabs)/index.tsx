@@ -36,8 +36,8 @@ export default function Painel() {
 
   const tryDemo = () =>
     confirmDialog(
-      'Carregar dados de exemplo?',
-      'Vamos criar 4 meses de lançamentos fictícios para você conhecer o app. Dá para apagar depois em Ajustes.',
+      'Quer ver com dados de mentira?',
+      'Vou criar 4 meses de lançamentos fictícios só pra você passear pelo app. Depois é só apagar em Ajustes.',
       () => void loadDemo().catch((e: Error) => notify('Erro', e.message)),
       { confirmText: 'Carregar' },
     );
@@ -46,12 +46,12 @@ export default function Painel() {
     return (
       <Screen>
         <Appear>
-          <Empty icon="rocket-outline" title="Vamos começar" text="Comece informando quanto você recebe por mês. Leva 30 segundos e já libera todos os cálculos.">
+          <Empty icon="rocket-outline" title="Bora começar" text="Me conta quanto você recebe por mês. Leva 30 segundos e já destrava tudo aqui dentro.">
             <View style={{ gap: 8, alignSelf: 'stretch' }}>
-              <Button title="Informar minha renda" icon="cash-outline" onPress={() => router.push('/renda')} />
+              <Button title="Quanto eu ganho por mês" icon="cash-outline" onPress={() => router.push('/renda')} />
               <Button title="Importar extrato (CSV/OFX)" icon="cloud-upload-outline" variant="ghost" onPress={() => router.push('/importar')} />
               <Button title="Adicionar lançamento" icon="add" variant="ghost" onPress={() => router.push('/transacao')} />
-              <Button title="Ver com dados de exemplo" icon="sparkles-outline" variant="ghost" onPress={tryDemo} />
+              <Button title="Só dar uma olhada antes" icon="sparkles-outline" variant="ghost" onPress={tryDemo} />
             </View>
           </Empty>
         </Appear>
@@ -78,9 +78,9 @@ export default function Painel() {
       {summary.baseIncomeCents === 0 ? (
         <Appear index={1}>
           <Card>
-            <Txt variant="h2">Falta informar sua renda</Txt>
-            <Txt variant="muted">Sem ela não dá para calcular quanto é saudável gastar em cada categoria.</Txt>
-            <Button title="Informar minha renda" icon="cash-outline" onPress={() => router.push('/renda')} />
+            <Txt variant="h2">Falta me contar quanto você ganha</Txt>
+            <Txt variant="muted">Sem isso eu não consigo dizer quanto dá pra gastar em cada coisa.</Txt>
+            <Button title="Quanto eu ganho por mês" icon="cash-outline" onPress={() => router.push('/renda')} />
           </Card>
         </Appear>
       ) : null}
@@ -90,8 +90,8 @@ export default function Painel() {
           <Card>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <View style={{ flex: 1 }}>
-                <Txt variant="h2">Ritmo do mês</Txt>
-                <Txt variant="small">Linha cheia: o quanto você já gastou. Tracejada: o ritmo que cabe no orçamento.</Txt>
+                <Txt variant="h2">Como tá o ritmo</Txt>
+                <Txt variant="small">A linha cheia é o que você já gastou. A tracejada é o ritmo que cabe no seu mês.</Txt>
               </View>
               <Icon name={paceDiff > 0 ? 'trending-up' : 'trending-down'} color={paceDiff > 0 ? t.over : t.ok} size={22} />
             </View>
@@ -102,11 +102,11 @@ export default function Painel() {
             </View>
             <Txt variant="muted" color={paceDiff > 0 ? t.over : t.ok}>
               {paceDiff > 0
-                ? `Você está ${formatBRL(paceDiff)} à frente do ritmo. Segurando os gastos variáveis dá para voltar à linha.`
-                : `Você está ${formatBRL(-paceDiff)} abaixo do ritmo. Esse é o caminho.`}
+                ? `Você tá ${formatBRL(paceDiff)} na frente do ritmo. Segurando um pouco os gastos variáveis dá pra voltar pra linha.`
+                : `Você tá ${formatBRL(-paceDiff)} abaixo do ritmo. É isso aí, continua assim.`}
             </Txt>
             {summary.projectedExpenseCents !== null ? (
-              <Txt variant="small">Mantendo assim, o mês fecha em {formatBRL(summary.projectedExpenseCents)} de gastos.</Txt>
+              <Txt variant="small">Mantendo esse ritmo, o mês fecha em {formatBRL(summary.projectedExpenseCents)} de gasto.</Txt>
             ) : null}
           </Card>
         </Appear>
@@ -118,9 +118,9 @@ export default function Painel() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               <Donut size={96} thickness={12} slices={[{ value: health.score, color: healthColor }, { value: 100 - health.score, color: 'transparent' }]} center={String(health.score)} />
               <View style={{ flex: 1 }}>
-                <Txt variant="muted">Saúde financeira</Txt>
+                <Txt variant="muted">Como tá sua grana</Txt>
                 <Txt variant="title" color={healthColor}>{health.label}</Txt>
-                <Txt variant="small">{isCurrent ? 'Parcial: o mês ainda não fechou, então a nota tende a ser otimista.' : 'Nota de 0 a 100 somando 4 critérios.'}</Txt>
+                <Txt variant="small">{isCurrent ? 'Nota parcial: o mês ainda não acabou, então ela tende a ser otimista.' : 'Nota de 0 a 100, somando 4 critérios.'}</Txt>
               </View>
             </View>
             {health.parts.map((p, i) => (
@@ -140,7 +140,7 @@ export default function Painel() {
       <Appear index={3}>
         <Card>
           <Txt variant="h2">Regra 50/30/20</Txt>
-          <Txt variant="small">Quanto da sua renda foi para cada grupo. O traço marca o ideal.</Txt>
+          <Txt variant="small">Quanto da sua renda foi pra cada grupo. O risquinho marca o ideal.</Txt>
           {summary.groups.map((g, i) => {
             const ratio = g.idealCents > 0 ? g.spentCents / g.idealCents : 0;
             const bad = g.group !== 'poupanca' && ratio > 1;
@@ -161,7 +161,7 @@ export default function Painel() {
       {top.length > 0 ? (
         <Appear index={4}>
           <Card>
-            <Txt variant="h2">Para onde vai o dinheiro</Txt>
+            <Txt variant="h2">Pra onde foi a grana</Txt>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <Donut size={120} thickness={18} slices={top} center={formatBRL(summary.expenseCents).replace('R$ ', '')} sub="gastos" />
               <View style={{ flex: 1, gap: 8 }}>
@@ -191,7 +191,7 @@ export default function Painel() {
       <Appear index={5}>
         <Card>
           <Txt variant="h2">Últimos 6 meses</Txt>
-          <Txt variant="small">Barra verde: o que entrou. Vermelha: o que saiu.</Txt>
+          <Txt variant="small">Verde é o que entrou, vermelho é o que saiu.</Txt>
           <MonthlyBars data={series} />
         </Card>
       </Appear>
@@ -206,7 +206,7 @@ export default function Painel() {
             </View>
             <Txt variant="big" color={t.text}>{formatBRL(recurringCents)}</Txt>
             <Bar ratio={summary.baseIncomeCents > 0 ? recurringCents / summary.baseIncomeCents : 0} color={t.necessidades} markerAt={0.5} />
-            <Txt variant="small">É o que sai todo mês independentemente do que você faça. Abaixo de 50% da renda, o orçamento respira.</Txt>
+            <Txt variant="small">É o que sai todo mês, faça chuva ou faça sol. Abaixo de 50% da renda, o orçamento respira.</Txt>
           </Card>
           </Press>
         </Appear>
@@ -227,7 +227,7 @@ export default function Painel() {
         <Appear index={8}>
           <Card>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Txt variant="h2">Dicas para você</Txt>
+              <Txt variant="h2">Umas dicas pra você</Txt>
               <Press onPress={() => router.push('/dicas')} hitSlop={8}>
                 <Txt variant="muted" color={t.primary} style={{ fontWeight: '700' }}>Ver todas</Txt>
               </Press>
@@ -241,7 +241,7 @@ export default function Painel() {
                 <Icon name={tip.severity === 'alerta' ? 'alert-circle' : tip.severity === 'atencao' ? 'warning' : 'information-circle'} color={tip.severity === 'alerta' ? t.over : tip.severity === 'atencao' ? t.warning : t.info} />
                 <View style={{ flex: 1 }}>
                   <Txt style={{ fontWeight: '600' }}>{tip.title}</Txt>
-                  {tip.savingsCents > 0 ? <Txt variant="small">Economia possível: {formatBRL(tip.savingsCents)}/mês</Txt> : null}
+                  {tip.savingsCents > 0 ? <Txt variant="small">Dá pra guardar {formatBRL(tip.savingsCents)}/mês</Txt> : null}
                 </View>
               </Press>
             ))}

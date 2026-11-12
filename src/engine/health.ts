@@ -10,7 +10,7 @@ export interface HealthPart {
 
 export interface HealthScore {
   score: number; // 0..100
-  label: 'Crítica' | 'Frágil' | 'Em evolução' | 'Boa' | 'Excelente';
+  label: 'Tá osso' | 'Tá apertado' | 'Melhorando' | 'Tá de boa' | 'Tá voando';
   parts: HealthPart[];
 }
 
@@ -39,16 +39,16 @@ export function healthScore(summary: MonthSummary, emergency: EmergencyStatus): 
 
   const score = Math.round(savings + debt + budget + reserve);
   const label: HealthScore['label'] =
-    score >= 85 ? 'Excelente' : score >= 70 ? 'Boa' : score >= 50 ? 'Em evolução' : score >= 30 ? 'Frágil' : 'Crítica';
+    score >= 85 ? 'Tá voando' : score >= 70 ? 'Tá de boa' : score >= 50 ? 'Melhorando' : score >= 30 ? 'Tá apertado' : 'Tá osso';
 
   return {
     score,
     label,
     parts: [
-      { label: 'Taxa de poupança', points: Math.round(savings), max: 40, detail: `${summary.savingsRatePct.toFixed(0)}% da renda (meta: 20%)` },
-      { label: 'Dívidas', points: Math.round(debt), max: 20, detail: `${summary.debtRatioPct.toFixed(0)}% da renda (ideal: até 10%)` },
-      { label: 'Categorias no limite', points: Math.round(budget), max: 25, detail: active.length ? `${within} de ${active.length} dentro do ideal` : 'sem gastos ainda' },
-      { label: 'Reserva de emergência', points: Math.round(reserve), max: 15, detail: `${emergency.monthsCovered.toFixed(1).replace('.', ',')} de 6 meses` },
+      { label: 'Quanto você guarda', points: Math.round(savings), max: 40, detail: `${summary.savingsRatePct.toFixed(0)}% da renda. O ideal é 20%.` },
+      { label: 'Dívidas', points: Math.round(debt), max: 20, detail: `Comem ${summary.debtRatioPct.toFixed(0)}% da renda. O ideal é no máximo 10%.` },
+      { label: 'Gastos no limite', points: Math.round(budget), max: 25, detail: active.length ? `${within} de ${active.length} categorias dentro do que cabe` : 'ainda sem gastos' },
+      { label: 'Reserva de emergência', points: Math.round(reserve), max: 15, detail: `Dá pra ${emergency.monthsCovered.toFixed(1).replace('.', ',')} mês. O ideal é 6.` },
     ],
   };
 }

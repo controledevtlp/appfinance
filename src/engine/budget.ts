@@ -1,4 +1,11 @@
-import { CATEGORIES, FIXED_COST_CATEGORIES, FOOD_CATEGORIES, GROUP_IDEAL_PCT, GROUP_LABEL } from './categories';
+import {
+  CATEGORIES,
+  DEBT_CATEGORIES,
+  FIXED_COST_CATEGORIES,
+  FOOD_CATEGORIES,
+  GROUP_IDEAL_PCT,
+  GROUP_LABEL,
+} from './categories';
 import { currentMonthKey, daysInMonth, monthKey, shiftMonth } from './dates';
 import type {
   Category,
@@ -128,7 +135,8 @@ export function computeMonthSummary(
 
   const expenseCents = groupSpent.necessidades + groupSpent.desejos;
   const investedCents = groupSpent.poupanca;
-  const debtCents = spentByCat.get('dividas') ?? 0;
+  // Financiamento do carro/moto também é dívida: entra no comprometimento da renda.
+  const debtCents = DEBT_CATEGORIES.reduce((a, id) => a + (spentByCat.get(id) ?? 0), 0);
 
   /*
    * Projeção do fechamento do mês. Extrapolar o gasto total por dia estoura a

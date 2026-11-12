@@ -125,10 +125,10 @@ export function parseCsv(text: string, options: ParseOptions = {}): ParseResult 
     headerNorm = all[header.index].map(normalize);
   } else {
     cols = inferColumns(all);
-    if (cols) warnings.push('Cabeçalho não encontrado: as colunas foram deduzidas pelo conteúdo. Confira a prévia.');
+    if (cols) warnings.push('Não achei o cabeçalho, então deduzi as colunas pelo conteúdo. Confere a prévia com carinho.');
   }
   if (!cols) {
-    return { format: 'csv', rows: [], skipped: 0, warnings: ['Não foi possível identificar as colunas de data e valor neste arquivo.'], looksLikeCardInvoice: false };
+    return { format: 'csv', rows: [], skipped: 0, warnings: ['Não consegui achar as colunas de data e valor nesse arquivo.'], looksLikeCardInvoice: false };
   }
 
   // Fatura do Nubank (date,category,title,amount): compras vêm positivas.
@@ -163,6 +163,6 @@ export function parseCsv(text: string, options: ParseOptions = {}): ParseResult 
       bankId: cols.id !== -1 && r[cols.id] ? r[cols.id] : undefined,
     });
   }
-  if (!rows.length) warnings.push('Nenhum lançamento válido foi encontrado.');
+  if (!rows.length) warnings.push('Não achei nenhum lançamento válido aqui dentro.');
   return { format: 'csv', rows, skipped, warnings, looksLikeCardInvoice };
 }

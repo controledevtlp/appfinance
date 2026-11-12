@@ -65,7 +65,7 @@ export default function Renda() {
 
   const save = async () => {
     if (totalCents <= 0) {
-      notify('Informe um valor', 'Preencha pelo menos uma fonte de renda com valor maior que zero.');
+      notify('Falta o valor', 'Preenche pelo menos uma entrada com valor maior que zero.');
       return;
     }
     setBusy(true);
@@ -90,10 +90,10 @@ export default function Renda() {
         );
       }
       notify(
-        'Renda salva',
+        'Beleza, anotado!',
         benefitCents > 0
-          ? `Limites calculados sobre ${formatBRL(totalCents)}, mais ${formatBRL(benefitCents)} de benefício para alimentação.`
-          : `Agora os limites de cada categoria são calculados sobre ${formatBRL(totalCents)}.`,
+          ? `Vou calcular tudo em cima de ${formatBRL(totalCents)}, mais ${formatBRL(benefitCents)} do cartão alimentação.`
+          : `Agora os limites saem todos em cima de ${formatBRL(totalCents)}.`,
         () => router.back(),
       );
     } catch (e) {
@@ -107,17 +107,17 @@ export default function Renda() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <Appear index={0}>
           <Card style={{ backgroundColor: t.primary, borderColor: t.primary }}>
-            <Txt variant="muted" color={t.primaryText}>Sua renda líquida do mês</Txt>
+            <Txt variant="muted" color={t.primaryText}>O que você recebe por mês</Txt>
             <Txt variant="big" color={t.primaryText}>{formatBRL(totalCents)}</Txt>
             <Txt variant="small" color={t.primaryText}>
-              É o que cai na conta depois dos descontos. Some tudo o que entra todo mês.
+              É o que cai na conta depois dos descontos. Soma tudo que entra certinho todo mês.
             </Txt>
           </Card>
         </Appear>
 
         <Appear index={1}>
           <Card>
-            <Txt variant="h2">De onde vem</Txt>
+            <Txt variant="h2">De onde vem essa grana</Txt>
             {drafts.map((d, i) => (
               <View key={d.id} style={{ gap: 8, paddingTop: i ? 10 : 0, borderTopWidth: i ? 1 : 0, borderColor: t.border }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -142,7 +142,7 @@ export default function Renda() {
                 <Chip key={p.label} label={p.label} icon={p.icon} onPress={() => addSource(p)} />
               ))}
             </View>
-            <Txt variant="small">Toque para somar outra fonte de renda.</Txt>
+            <Txt variant="small">Toca pra somar outra entrada.</Txt>
           </Card>
         </Appear>
 
@@ -151,7 +151,7 @@ export default function Renda() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <Txt variant="h2">Benefícios da empresa</Txt>
-                <Txt variant="small">Dinheiro de uso restrito: não dá para pagar aluguel nem investir com ele.</Txt>
+                <Txt variant="small">Esse dinheiro é preso: não dá pra pagar aluguel nem investir com ele.</Txt>
               </View>
               <Icon name="fast-food" color={t.primary} size={22} />
             </View>
@@ -159,14 +159,14 @@ export default function Renda() {
               label="Cartão alimentação / refeição (limite mensal)"
               value={benefit}
               onChangeText={setBenefit}
-              hint="Some o que a empresa deposita por mês. Vale para mercado, lanches e restaurantes."
+              hint="O que a empresa deposita por mês. Serve pra mercado, lanche e restaurante."
             />
             {benefitCents > 0 ? (
               <View style={{ backgroundColor: t.soft, borderRadius: radius.md, padding: 12, gap: 4 }}>
-                <Txt variant="small" style={{ fontWeight: '700' }}>COMO ENTRA NA CONTA</Txt>
+                <Txt variant="small" style={{ fontWeight: '700' }}>COMO ISSO ENTRA NA CONTA</Txt>
                 <Txt variant="small">
-                  Os {formatBRL(benefitCents)} não entram na renda livre, então a regra 50/30/20 continua saindo do salário.
-                  O que eles fazem é aumentar o teto de mercado e de alimentação fora, e contar no quanto sobrou no fim do mês.
+                  Esses {formatBRL(benefitCents)} não entram na renda livre, porque você não paga aluguel nem investe com eles.
+                  O que eles fazem é aumentar o teto de mercado e comida fora, e contar no quanto sobrou no fim do mês.
                 </Txt>
               </View>
             ) : null}
@@ -176,8 +176,8 @@ export default function Renda() {
         {totalCents > 0 ? (
           <Appear index={3}>
             <Card>
-              <Txt variant="h2">O que isso libera por mês</Txt>
-              <Txt variant="small">A divisão 50/30/20 aplicada à sua renda, atualizada enquanto você digita.</Txt>
+              <Txt variant="h2">O que dá pra gastar com isso</Txt>
+              <Txt variant="small">É a divisão 50/30/20 na sua renda, mudando enquanto você digita.</Txt>
               <SplitRow label="Necessidades" hint="moradia, mercado, transporte, saúde" cents={split.necessidades} pct={50} color={t.necessidades} delay={0} />
               <SplitRow label="Desejos" hint="delivery, lazer, compras, assinaturas" cents={split.desejos} pct={30} color={t.desejos} delay={80} />
               <SplitRow label="Poupança" hint="reserva de emergência e investimentos" cents={split.poupanca} pct={20} color={t.poupanca} delay={160} />
@@ -192,8 +192,8 @@ export default function Renda() {
                 <Txt style={{ fontWeight: '600' }}>Lançar como receita de {monthLabel(target)}</Txt>
                 <Txt variant="small">
                   {alreadyHasIncome
-                    ? 'Você já tem receitas lançadas neste mês; ligar isso vai somar de novo.'
-                    : 'Cria os lançamentos de entrada, para o saldo do mês ficar certo.'}
+                    ? 'Cuidado: você já tem entradas lançadas esse mês, isso vai somar de novo.'
+                    : 'Cria as entradas no mês, pra o saldo fechar direitinho.'}
                 </Txt>
               </View>
               <Switch value={alsoPost} onValueChange={setAlsoPost} trackColor={{ true: t.primary, false: t.border }} />
@@ -204,7 +204,7 @@ export default function Renda() {
         <Button title="Salvar renda" onPress={save} loading={busy} />
         {month !== target ? (
           <Txt variant="small" style={{ textAlign: 'center' }}>
-            A renda informada vale como referência para todos os meses.
+            O que você colocar aqui vale de referência pra todos os meses.
           </Txt>
         ) : null}
       </ScrollView>

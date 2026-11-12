@@ -34,7 +34,7 @@ describe('extratos em PDF dos bancos', () => {
     expect(r.rows.map((x) => reais(x.amountCents))).toEqual([6500, -1650, -182.4]);
     // O número do documento não pode virar parte da descrição.
     expect(r.rows[0].description).toBe('TED RECEBIDA');
-    expect(r.warnings.join(' ')).toContain('colunas de crédito e débito');
+    expect(r.warnings.join(' ')).toContain('crédito e débito');
   });
 
   it('Banco do Brasil: sufixo D/C e coluna de saldo', () => {
@@ -65,7 +65,7 @@ describe('extratos em PDF dos bancos', () => {
       const r = parse(bank);
       expect(r.rows.length).toBe(2);
       expect(r.rows.every((x) => x.amountCents < 0)).toBe(true);
-      expect(r.warnings.join(' ')).toContain('não traziam sinal');
+      expect(r.warnings.join(' ')).toContain('sem sinal');
     }
   });
 
@@ -88,7 +88,7 @@ describe('extratos em PDF dos bancos', () => {
     for (let i = 0; i < tag.length; i++) withEncrypt[pdf.length + i] = tag.charCodeAt(i);
     const r = parsePdf(withEncrypt);
     expect(r.rows).toHaveLength(0);
-    expect(r.warnings.join(' ')).toContain('protegido por senha');
+    expect(r.warnings.join(' ')).toContain('senha');
   });
 });
 
