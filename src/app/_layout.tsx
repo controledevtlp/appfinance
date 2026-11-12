@@ -42,6 +42,7 @@ function Gate() {
           <Stack.Screen name="transacao" options={{ presentation: 'modal', title: 'Lançamento' }} />
           <Stack.Screen name="importar" options={{ title: 'Importar extrato' }} />
           <Stack.Screen name="renda" options={{ title: 'Minha renda' }} />
+          <Stack.Screen name="detalhe" options={{ title: 'Detalhe' }} />
         </Stack.Protected>
       </Stack>
     </>

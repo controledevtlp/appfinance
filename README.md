@@ -8,9 +8,10 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 | Tela | O que faz |
 |---|---|
 | **Painel** | Quanto sobrou no mês, **ritmo de gasto do mês** (acumulado × ritmo ideal), nota de saúde financeira (0–100, explicada), regra 50/30/20, para onde vai o dinheiro, últimos 6 meses, gastos constantes, reserva de emergência e principais dicas |
-| **Lançamentos** | Lista por dia com busca e filtro; adicionar/editar/excluir; categoria sugerida automaticamente pela descrição |
+| **Lançamentos** | Lista por dia com busca e filtro; adicionar/editar/excluir; **grade visual de categorias** com ícone; categoria sugerida pelo nome; apelido para gastos |
+| **Detalhe** | Toque em qualquer número e veja exatamente os lançamentos que o formaram, com composição por categoria |
 | **Orçamento** | Limite ideal por categoria (calculado sobre a sua renda), barras de uso, limites personalizáveis |
-| **Dicas** | Alertas ordenados por gravidade, cada um com **plano de melhoria em etapas** e economia mensal estimada |
+| **Dicas** | *Onde economizar*: alertas por gravidade, cada um com **plano em etapas** e economia estimada. *Onde fazer render*: **renda fixa**, na ordem reserva → prazo |
 | **Importar extrato** | CSV, OFX e **PDF**, com prévia, correção de categoria (e de entrada/saída), descarte de duplicados e **mapeamento de gastos constantes** |
 | **Minha renda** | Informe quanto recebe sem precisar de extrato: várias fontes (salário, freela, aluguel…), **cartão alimentação**, total ao vivo e prévia do 50/30/20 enquanto digita |
 | **Ajustes** | Renda líquida, reserva atual, notificações, dados de exemplo, conta |
@@ -28,7 +29,7 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 - Excessos menores que R$ 20 não geram dica.
 - A soma "você libera até X/mês" não conta duas vezes: juros que já estão numa categoria estourada entram uma vez só.
 
-Todo o motor é TypeScript puro e testado: `npm test` (61 testes).
+Todo o motor é TypeScript puro e testado: `npm test` (79 testes).
 
 ## Rodar no computador
 
@@ -76,6 +77,16 @@ São **locais** (agendadas no próprio aparelho, sem servidor): alerta quando um
 ## Gastos constantes
 Ao ler o extrato, o app agrupa os lançamentos por descrição (ignorando números, então "Parcela 3/10" e "Parcela 4/10" são o mesmo compromisso) e já marca os que parecem fixos: os que repetem em 2+ meses com valor praticamente igual, ou os de categoria tipicamente fixa (moradia, contas, assinaturas, dívidas, educação). Um delivery que repete com valores diferentes **não** é marcado. Você confirma ou desmarca cada um, e o total aparece na hora comparado com 50% da sua renda. O que é marcado entra na projeção do mês como conta que vence uma vez só.
 
+## Ver os detalhes de qualquer número (drill down)
+Os valores do painel e do orçamento são tocáveis e abrem a tela de detalhe com **o mesmo filtro usado no cálculo**: Receitas, Despesas, Investido, cada grupo do 50/30/20, cada fatia do gráfico, cada categoria do orçamento, os gastos constantes e o cartão alimentação. A tela mostra o total, a média, a composição por categoria e a lista do maior para o menor — que é a ordem útil para achar o que pesou.
+
+## Dar nome aos gastos
+O extrato traz "ENEL DISTRIBUICAO SP 0001". No lançamento, o campo **Dê um nome** renomeia, e quando o gasto se repete aparece a opção *"usar este nome nos N lançamentos iguais"*. O apelido é guardado pela chave de agrupamento (sem números nem pontuação), então vale para as parcelas e para os próximos meses importados. O nome original do extrato continua visível na tela de edição.
+
+## Dicas de investimento (renda fixa)
+Seção separada na aba Dicas, que acompanha a situação: enquanto a reserva não está completa, fala só de onde deixar a reserva (liquidez diária); depois passa a falar de prazo (pós-fixado para o curto, IPCA+ para o longo), tabela regressiva de IR e comparação pelo líquido. Também avisa quando sobra dinheiro e nada foi investido.
+É **informação geral para estudar, não recomendação** de investimento nem indicação de banco ou corretora, e cada bloco pede para conferir as regras atuais antes de investir — elas mudam.
+
 ## Cores
 Paleta índigo sobre neutro levemente arroxeado (`src/theme/index.ts`). Nada de branco puro nem preto puro: o contraste máximo cansa a vista em uso longo, então o fundo claro é um cinza-lavanda e o escuro é um carvão arroxeado. Verde e vermelho ficam reservados para entrada e saída de dinheiro, onde a cor precisa significar alguma coisa. A paleta dos gráficos também vem do tema, então ela clareia no modo escuro.
 
@@ -91,8 +102,21 @@ No app/internet banking, exporte o extrato em **CSV, OFX ou PDF** (ou a fatura d
 - Depois de importar, o app vai para o mês com mais lançamentos do arquivo, em vez de abrir no mês atual vazio.
 
 ### PDF
-O leitor de PDF é próprio (`src/engine/import/pdf.ts`): acha os streams de conteúdo, descomprime o que está em FlateDecode (via `fflate`), lê os operadores de texto (`Tj`, `TJ`, `Td`, `Tm`) e remonta as linhas pela posição na página. Depois procura "data … descrição … valor", entende as marcas `C`/`D`, descarta linhas de saldo e total, e completa o ano em datas curtas.
-**Limites honestos:** PDF digitalizado (foto ou scan) não tem texto e não dá para ler — o app avisa e pede CSV/OFX. Fontes com codificação própria podem sair ilegíveis. Quando a linha não traz sinal nem `C`/`D`, o lançamento entra como saída e o app avisa: na prévia dá para tocar e escolher uma categoria de receita para virar entrada. **CSV e OFX continuam sendo os formatos mais confiáveis.**
+O leitor de PDF é próprio (`src/engine/import/pdf.ts`): acha os streams de conteúdo, descomprime o que está em FlateDecode (via `fflate`), lê os operadores de texto (`Tj`, `TJ`, `Td`, `Tm`) e remonta as linhas **guardando a posição de cada célula na página**. Com isso ele entende as variações reais dos bancos:
+
+| O que varia | Como é tratado |
+|---|---|
+| `10/10/2026`, `10/10/26`, `10/10` | ano completado pelo ano predominante no documento |
+| `03 OUT`, `05 out`, `10 de outubro` | mês por extenso ou abreviado, em maiúsculas ou minúsculas |
+| data só no cabeçalho do dia (Nubank) | a data do cabeçalho vale para as linhas abaixo |
+| colunas separadas de Crédito e Débito (Bradesco) | o sinal vem da posição da célula na página |
+| sufixo `D`/`C` (Banco do Brasil) | débito e crédito |
+| coluna de saldo no fim da linha | descartada: vale sempre o primeiro valor |
+| número de documento entre a descrição e o valor | removido da descrição |
+| sem sinal nenhum (faturas) | entra como saída; "recebido", "salário", "depósito" e afins viram entrada |
+
+Há um teste por formato em `src/engine/__tests__/bancos.test.ts`, cobrindo Nubank (fatura e extrato), Bradesco, Banco do Brasil, Itaú, Inter, Neon, Banco Pan e BrasilCard. **Importante:** os PDFs dos testes são montados a partir do layout típico de cada banco — não são arquivos reais exportados dessas contas. Se o seu extrato não for lido, a tela mostra o texto que o app conseguiu extrair, e é isso que permite ajustar o leitor.
+**Limites honestos:** PDF digitalizado (foto ou scan) não tem texto e não dá para ler — o app avisa e pede CSV/OFX. PDF protegido por senha também não abre, e o app diz isso. Fontes com codificação própria podem sair ilegíveis. Quando a linha não traz sinal nem `C`/`D`, o lançamento entra como saída e o app avisa: na prévia dá para tocar e escolher uma categoria de receita para virar entrada. **CSV e OFX continuam sendo os formatos mais confiáveis.**
 
 ### Se o arquivo não abrir
 A leitura tenta, em ordem: o Blob do navegador, o `expo-file-system` (celular) e `fetch` do endereço do arquivo (resolve `file://`, `content://`, `blob:` e `data:`). Se as três falharem, a tela mostra o que foi tentado. Se o arquivo abrir mas nada for reconhecido, a tela mostra as primeiras linhas do arquivo, para dar para ver o que o app leu. Há também um botão **Testar com um extrato de exemplo**, que importa sem depender de arquivo — serve para separar "o seletor de arquivos falhou" de "meu arquivo não foi entendido".

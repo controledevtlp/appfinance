@@ -7,7 +7,14 @@ import { Button, Card, CategoryBadge, CategoryPicker, Empty, Icon, Screen, Txt }
 import { useApp } from '@/data/AppContext';
 import { CATEGORIES, getCategory } from '@/engine/categories';
 import { formatDateBR, monthLabel } from '@/engine/dates';
-import { decodeBytes, groupRecurringCandidates, parseStatementBytes, toPreviewRows, type ParseResult } from '@/engine/import';
+import {
+  decodeBytes,
+  groupRecurringCandidates,
+  parseStatementBytes,
+  pdfDiagnostic,
+  toPreviewRows,
+  type ParseResult,
+} from '@/engine/import';
 import { formatBRL } from '@/engine/money';
 import type { TxType } from '@/engine/types';
 import { notify } from '@/lib/dialog';
@@ -40,8 +47,9 @@ export default function Importar() {
   /** Primeiras linhas do arquivo, mostradas quando nada é reconhecido. */
   const preview = useMemo(() => {
     if (!bytes) return [];
-    const head = result?.format === 'pdf' ? '' : decodeBytes(bytes.subarray(0, 4000));
-    return head.split(/\r?\n/).filter((l) => l.trim()).slice(0, 8);
+    // Em PDF, o que interessa é o texto que conseguimos extrair, não os bytes crus.
+    if (result?.format === 'pdf') return pdfDiagnostic(bytes).slice(0, 15);
+    return decodeBytes(bytes.subarray(0, 4000)).split(/\r?\n/).filter((l) => l.trim()).slice(0, 10);
   }, [bytes, result?.format]);
 
   const rows = useMemo(() => {
@@ -233,7 +241,9 @@ export default function Importar() {
             </Txt>
             {preview.length ? (
               <View style={{ backgroundColor: t.bg, borderRadius: radius.md, padding: 10, gap: 2 }}>
-                <Txt variant="small" style={{ fontWeight: '700' }}>PRIMEIRAS LINHAS DO ARQUIVO</Txt>
+                <Txt variant="small" style={{ fontWeight: '700' }}>
+                {result.format === 'pdf' ? 'TEXTO QUE CONSEGUI LER DO PDF' : 'PRIMEIRAS LINHAS DO ARQUIVO'}
+              </Txt>
                 {preview.map((l, i) => (
                   <Txt key={i} variant="small" numberOfLines={1}>{l}</Txt>
                 ))}

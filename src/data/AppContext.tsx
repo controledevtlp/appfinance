@@ -13,7 +13,7 @@ import {
 import { currentMonthKey } from '@/engine/dates';
 import { buildDemoTransactions, DEMO_SETTINGS } from '@/engine/demo';
 import { healthScore, type HealthScore } from '@/engine/health';
-import { generateTips } from '@/engine/tips';
+import { generateTips, investmentTips } from '@/engine/tips';
 import { DEFAULT_SETTINGS, type MonthSummary, type Settings, type Tip, type Transaction } from '@/engine/types';
 import { notifyBudgetAlerts, syncRecurringNotifications } from '@/notifications';
 import { LocalStore, SupabaseStore, type DataStore, type NewTransaction } from './store';
@@ -31,6 +31,8 @@ interface AppState {
   setMonth: (m: string) => void;
   summary: MonthSummary;
   tips: Tip[];
+  /** Dicas de renda fixa, separadas das de economia. */
+  investments: Tip[];
   emergency: EmergencyStatus;
   health: HealthScore | null;
   series: SeriesPoint[];
@@ -114,6 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const summary = useMemo(() => computeMonthSummary(transactions, month, settings), [transactions, month, settings]);
   const tips = useMemo(() => generateTips(transactions, month, settings), [transactions, month, settings]);
+  const investments = useMemo(() => investmentTips(transactions, month, settings), [transactions, month, settings]);
   const emergency = useMemo(() => emergencyStatus(transactions, month, settings), [transactions, month, settings]);
   const health = useMemo(() => healthScore(summary, emergency), [summary, emergency]);
   const series = useMemo(() => monthlySeries(transactions, month, 6), [transactions, month]);
@@ -189,6 +192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMonth,
     summary,
     tips,
+    investments,
     emergency,
     health,
     series,

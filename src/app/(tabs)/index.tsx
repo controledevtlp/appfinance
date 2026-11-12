@@ -24,9 +24,9 @@ export default function Painel() {
     const sorted = summary.categories
       .filter((c) => c.spentCents > 0 && c.category.group !== 'poupanca')
       .sort((a, b) => b.spentCents - a.spentCents);
-    const head = sorted.slice(0, 5).map((c, i) => ({ name: c.category.name, value: c.spentCents, color: t.chart[i] }));
+    const head = sorted.slice(0, 5).map((c, i) => ({ name: c.category.name, value: c.spentCents, color: t.chart[i], categoryId: c.category.id }));
     const rest = sorted.slice(5).reduce((a, c) => a + c.spentCents, 0);
-    return rest > 0 ? [...head, { name: 'Outras', value: rest, color: t.chart[5] }] : head;
+    return rest > 0 ? [...head, { name: 'Outras', value: rest, color: t.chart[5], categoryId: undefined }] : head;
   })();
 
   const healthColor = !health ? t.muted : health.score >= 70 ? t.ok : health.score >= 50 ? t.warning : t.over;
@@ -68,9 +68,9 @@ export default function Painel() {
           <Txt variant="muted">Sobrou no mês</Txt>
           <Txt variant="big" color={summary.balanceCents >= 0 ? t.income : t.expense}>{formatBRL(summary.balanceCents)}</Txt>
           <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap' }}>
-            <Stat label="Receitas" value={formatBRL(summary.incomeCents)} color={t.income} />
-            <Stat label="Despesas" value={formatBRL(summary.expenseCents)} color={t.expense} />
-            <Stat label="Investido" value={formatBRL(summary.investedCents)} color={t.poupanca} />
+            <Stat label="Receitas" value={formatBRL(summary.incomeCents)} color={t.income} drill={{ kind: 'income' }} />
+            <Stat label="Despesas" value={formatBRL(summary.expenseCents)} color={t.expense} drill={{ kind: 'expense' }} />
+            <Stat label="Investido" value={formatBRL(summary.investedCents)} color={t.poupanca} drill={{ kind: 'invested' }} />
           </View>
         </Card>
       </Appear>
@@ -97,7 +97,7 @@ export default function Painel() {
             </View>
             <SpendingPace points={pace} totalDays={daysInMonth(month)} />
             <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap' }}>
-              <Stat label={`Gasto até o dia ${last.day}`} value={formatBRL(last.cumulativeCents)} color={t.text} />
+              <Stat label={`Gasto até o dia ${last.day}`} value={formatBRL(last.cumulativeCents)} color={t.text} drill={{ kind: 'expense' }} />
               <Stat label="Ritmo ideal" value={formatBRL(last.paceCents)} color={t.muted} />
             </View>
             <Txt variant="muted" color={paceDiff > 0 ? t.over : t.ok}>
@@ -145,14 +145,14 @@ export default function Painel() {
             const ratio = g.idealCents > 0 ? g.spentCents / g.idealCents : 0;
             const bad = g.group !== 'poupanca' && ratio > 1;
             return (
-              <View key={g.group} style={{ gap: 6 }}>
+              <Press key={g.group} onPress={() => router.push({ pathname: '/detalhe', params: { group: g.group } })} style={{ gap: 6 }} accessibilityLabel={`Ver gastos de ${g.label}`}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Txt style={{ fontWeight: '600' }}>{g.label} <Txt variant="muted">(ideal {g.idealPct}%)</Txt></Txt>
                   <Txt variant="muted" color={bad ? t.over : undefined}>{g.actualPct.toFixed(0)}% da renda</Txt>
                 </View>
                 <Bar ratio={ratio} markerAt={1} color={bad ? t.over : groupColor[g.group]} delay={i * 90} />
                 <Txt variant="small">{formatBRL(g.spentCents)} de {formatBRL(g.idealCents)}{g.group === 'poupanca' ? ' (meta)' : ' (teto)'}</Txt>
-              </View>
+              </Press>
             );
           })}
         </Card>
@@ -168,14 +168,18 @@ export default function Painel() {
                 {top.map((s, i) => {
                   const share = s.value / Math.max(1, summary.expenseCents);
                   return (
-                    <View key={s.name} style={{ gap: 3 }}>
+                    <Press
+                      key={s.name}
+                      disabled={!s.categoryId}
+                      onPress={() => s.categoryId && router.push({ pathname: '/detalhe', params: { categoryId: s.categoryId } })}
+                      style={{ gap: 3 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: s.color }} />
                         <Txt variant="small" style={{ flex: 1 }} numberOfLines={1}>{s.name}</Txt>
                         <Txt variant="small" style={{ fontWeight: '700' }}>{Math.round(share * 100)}%</Txt>
                       </View>
                       <Bar ratio={share} color={s.color} height={4} delay={200 + i * 60} />
-                    </View>
+                    </Press>
                   );
                 })}
               </View>
@@ -194,6 +198,7 @@ export default function Painel() {
 
       {recurringCents > 0 ? (
         <Appear index={6}>
+          <Press onPress={() => router.push({ pathname: '/detalhe', params: { kind: 'recurring' } })}>
           <Card>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Txt variant="h2">Gastos constantes</Txt>
@@ -203,6 +208,7 @@ export default function Painel() {
             <Bar ratio={summary.baseIncomeCents > 0 ? recurringCents / summary.baseIncomeCents : 0} color={t.necessidades} markerAt={0.5} />
             <Txt variant="small">É o que sai todo mês independentemente do que você faça. Abaixo de 50% da renda, o orçamento respira.</Txt>
           </Card>
+          </Press>
         </Appear>
       ) : null}
 
@@ -227,13 +233,17 @@ export default function Painel() {
               </Press>
             </View>
             {topTips.map((tip) => (
-              <View key={tip.id} style={{ flexDirection: 'row', gap: 10 }}>
+              <Press
+                key={tip.id}
+                disabled={!tip.categoryId}
+                onPress={() => tip.categoryId && router.push({ pathname: '/detalhe', params: { categoryId: tip.categoryId } })}
+                style={{ flexDirection: 'row', gap: 10 }}>
                 <Icon name={tip.severity === 'alerta' ? 'alert-circle' : tip.severity === 'atencao' ? 'warning' : 'information-circle'} color={tip.severity === 'alerta' ? t.over : tip.severity === 'atencao' ? t.warning : t.info} />
                 <View style={{ flex: 1 }}>
                   <Txt style={{ fontWeight: '600' }}>{tip.title}</Txt>
                   {tip.savingsCents > 0 ? <Txt variant="small">Economia possível: {formatBRL(tip.savingsCents)}/mês</Txt> : null}
                 </View>
-              </View>
+              </Press>
             ))}
           </Card>
         </Appear>
@@ -242,11 +252,22 @@ export default function Painel() {
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
+/** Número do painel. Com `drill`, tocar abre a lista exata que formou o valor. */
+function Stat({ label, value, color, drill }: { label: string; value: string; color: string; drill?: Record<string, string> }) {
+  const t = useTheme();
+  const body = (
     <View>
-      <Txt variant="small">{label}</Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+        <Txt variant="small">{label}</Txt>
+        {drill ? <Icon name="chevron-forward" size={11} color={t.muted} /> : null}
+      </View>
       <Txt style={{ fontWeight: '700' }} color={color}>{value}</Txt>
     </View>
+  );
+  if (!drill) return body;
+  return (
+    <Press onPress={() => router.push({ pathname: '/detalhe', params: drill })} accessibilityLabel={`Ver ${label}`}>
+      {body}
+    </Press>
   );
 }

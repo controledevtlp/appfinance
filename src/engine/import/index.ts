@@ -7,7 +7,7 @@ import type { ParseOptions, ParseResult, ParsedRow } from './types';
 
 export type { ParseOptions, ParseResult, ParsedRow } from './types';
 export { groupRecurringCandidates, type RecurringGroup } from './recurring';
-export { extractPdfLines, isPdf, parsePdf, parsePdfLines } from './pdf';
+export { extractPdfLines, extractPdfPages, isEncrypted, isPdf, parsePdf, parsePdfPages, pdfDiagnostic } from './pdf';
 
 export function parseStatement(text: string, opts: ParseOptions = {}): ParseResult {
   const isOfx = /<OFX>|OFXHEADER|<STMTTRN>/i.test(text);

@@ -5,6 +5,7 @@ import { CategoryBadge, Chip, Icon, MonthSwitcher, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { getCategory } from '@/engine/categories';
 import { normalize } from '@/engine/categorizer';
+import { nameOf } from '@/engine/naming';
 import { dayLabel, monthKey } from '@/engine/dates';
 import { formatBRL } from '@/engine/money';
 import type { Transaction } from '@/engine/types';
@@ -14,7 +15,7 @@ type Filter = 'all' | 'expense' | 'income';
 
 export default function Lancamentos() {
   const t = useTheme();
-  const { transactions, month, setMonth } = useApp();
+  const { transactions, month, setMonth, settings } = useApp();
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
 
@@ -23,12 +24,12 @@ export default function Lancamentos() {
     const list = transactions
       .filter((x) => monthKey(x.date) === month)
       .filter((x) => filter === 'all' || x.type === filter)
-      .filter((x) => !q || normalize(x.description).includes(q) || normalize(getCategory(x.categoryId).name).includes(q))
+      .filter((x) => !q || normalize(nameOf(x, settings)).includes(q) || normalize(getCategory(x.categoryId).name).includes(q))
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     const byDay = new Map<string, Transaction[]>();
     for (const x of list) byDay.set(x.date, [...(byDay.get(x.date) ?? []), x]);
     return [...byDay.entries()].map(([date, data]) => ({ title: dayLabel(date), data }));
-  }, [transactions, month, filter, query]);
+  }, [transactions, month, filter, query, settings]);
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
@@ -58,7 +59,7 @@ export default function Lancamentos() {
             style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: t.card, padding: 12, borderWidth: 1, borderColor: t.border, borderTopLeftRadius: index === 0 ? radius.md : 0, borderTopRightRadius: index === 0 ? radius.md : 0, borderBottomLeftRadius: index === section.data.length - 1 ? radius.md : 0, borderBottomRightRadius: index === section.data.length - 1 ? radius.md : 0, marginTop: -1 }}>
             <CategoryBadge categoryId={item.categoryId} />
             <View style={{ flex: 1 }}>
-              <Txt numberOfLines={1} style={{ fontWeight: '600' }}>{item.description}</Txt>
+              <Txt numberOfLines={1} style={{ fontWeight: '600' }}>{nameOf(item, settings)}</Txt>
               <Txt variant="small">{getCategory(item.categoryId).name}{item.source === 'import' ? ' · importado' : ''}</Txt>
             </View>
             <Txt style={{ fontWeight: '700' }} color={item.categoryId === 'transferencia' ? t.muted : item.type === 'income' ? t.income : t.expense}>

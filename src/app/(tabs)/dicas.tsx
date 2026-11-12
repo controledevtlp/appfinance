@@ -10,7 +10,7 @@ import { useTheme } from '@/theme';
 
 export default function Dicas() {
   const t = useTheme();
-  const { tips, month, setMonth, transactions } = useApp();
+  const { tips, investments, month, setMonth, transactions } = useApp();
   const [open, setOpen] = useState<string | null>(null);
   const total = totalPotentialSavings(tips);
 
@@ -35,6 +35,9 @@ export default function Dicas() {
             </Appear>
           ) : null}
 
+          <Appear index={1}>
+            <Txt variant="h2" style={{ marginTop: 4 }}>Onde economizar</Txt>
+          </Appear>
           {tips.map((tip: Tip, idx: number) => {
             const expanded = open === tip.id;
             return (
@@ -71,6 +74,53 @@ export default function Dicas() {
             );
           })}
           {tips.length === 0 ? <Txt variant="muted">Sem alertas neste mês. Continue assim!</Txt> : null}
+
+          {investments.length > 0 ? (
+            <>
+              <Appear index={1}>
+                <View style={{ marginTop: 10, gap: 2 }}>
+                  <Txt variant="h2">Onde fazer render</Txt>
+                  <Txt variant="small">
+                    Renda fixa, em ordem: primeiro a reserva, depois o prazo. É informação geral para estudar, não
+                    recomendação de investimento nem indicação de banco ou corretora.
+                  </Txt>
+                </View>
+              </Appear>
+              {investments.map((tip: Tip, idx: number) => {
+                const expanded = open === tip.id;
+                return (
+                  <Appear key={tip.id} index={idx + 2}>
+                    <Press onPress={() => setOpen(expanded ? null : tip.id)} accessibilityRole="button" aria-expanded={expanded}>
+                      <Morph>
+                        <Card style={{ borderLeftWidth: 4, borderLeftColor: t.poupanca }}>
+                          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                            <Icon name="trending-up" color={t.poupanca} />
+                            <View style={{ flex: 1, gap: 4 }}>
+                              <Txt style={{ fontWeight: '700' }}>{tip.title}</Txt>
+                              <Txt variant="muted">{tip.message}</Txt>
+                            </View>
+                            <Icon name={expanded ? 'chevron-up' : 'chevron-down'} color={t.muted} size={18} />
+                          </View>
+                          {expanded ? (
+                            <Reveal>
+                              <View style={{ gap: 8, paddingTop: 4 }}>
+                                {tip.steps.map((st, i) => (
+                                  <View key={i} style={{ flexDirection: 'row', gap: 8 }}>
+                                    <Icon name="ellipse" size={7} color={t.poupanca} />
+                                    <Txt style={{ flex: 1 }}>{st}</Txt>
+                                  </View>
+                                ))}
+                              </View>
+                            </Reveal>
+                          ) : null}
+                        </Card>
+                      </Morph>
+                    </Press>
+                  </Appear>
+                );
+              })}
+            </>
+          ) : null}
         </>
       )}
     </Screen>

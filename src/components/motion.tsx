@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -60,6 +60,17 @@ export function Morph({ children, style }: { children: ReactNode; style?: StyleP
   );
 }
 
+/*
+ * Chaves que posicionam o elemento no pai. Elas precisam ficar no contêiner
+ * externo (o que anima), senão uma largura em porcentagem é calculada contra
+ * um pai que se ajusta ao conteúdo e a grade colapsa.
+ */
+const LAYOUT_KEYS = [
+  'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
+  'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'position', 'top', 'bottom', 'left', 'right',
+  'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical',
+] as const;
+
 /** Toque com resposta tátil: afunda levemente ao pressionar. */
 export function Press({
   children,
@@ -69,8 +80,20 @@ export function Press({
 }: PressableProps & { children: ReactNode; style?: StyleProp<ViewStyle>; scaleTo?: number }) {
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(flat)) {
+    if ((LAYOUT_KEYS as readonly string[]).includes(k)) outer[k] = v;
+    else inner[k] = v;
+  }
+  // O botão preenche o contêiner, para que fundo e borda acompanhem o tamanho.
+  if (outer.width !== undefined) inner.width = '100%';
+  if (outer.height !== undefined) inner.height = '100%';
+
   return (
-    <Animated.View style={animated}>
+    <Animated.View style={[outer as ViewStyle, animated]}>
       <Pressable
         {...props}
         onPressIn={(e) => {
@@ -81,7 +104,7 @@ export function Press({
           scale.value = withSpring(1, { damping: 18, stiffness: 260 });
           props.onPressOut?.(e);
         }}
-        style={style}>
+        style={inner as ViewStyle}>
         {children}
       </Pressable>
     </Animated.View>

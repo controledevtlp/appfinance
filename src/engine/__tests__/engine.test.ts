@@ -15,7 +15,8 @@ import { buildDemoTransactions, DEMO_SETTINGS } from '../demo';
 import { healthScore } from '../health';
 import { decodeBytes, groupRecurringCandidates, parseStatement, toPreviewRows } from '../import';
 import { formatBRL, parseMoneyToCents } from '../money';
-import { detectSubscriptions, generateTips } from '../tips';
+import { countSameName, displayName, withAlias } from '../naming';
+import { detectSubscriptions, generateTips, investmentTips } from '../tips';
 import { getCategory } from '../categories';
 import { DEFAULT_SETTINGS, type Settings, type Transaction } from '../types';
 
@@ -510,5 +511,61 @@ describe('mês de destino depois da importação', () => {
   });
   it('no empate, fica com o mais recente', () => {
     expect(busiestMonth(['2026-09-05', '2026-10-10'])).toBe('2026-10');
+  });
+});
+
+describe('apelidos e dicas de investimento', () => {
+  it('apelido vale para todos os lançamentos iguais, inclusive parcelas', () => {
+    const aliases = withAlias({}, 'ENEL DISTRIBUICAO SP 0001', 'Conta de luz');
+    expect(displayName('ENEL DISTRIBUICAO SP 0001', aliases)).toBe('Conta de luz');
+    expect(displayName('ENEL DISTRIBUICAO SP 0002', aliases)).toBe('Conta de luz'); // números não contam na chave
+    expect(displayName('OUTRA COISA', aliases)).toBe('OUTRA COISA');
+  });
+
+  it('apagar o apelido volta ao nome do extrato', () => {
+    const a1 = withAlias({}, 'NETFLIX.COM', 'Netflix');
+    expect(displayName('NETFLIX.COM', withAlias(a1, 'NETFLIX.COM', '  '))).toBe('NETFLIX.COM');
+  });
+
+  it('conta quantos lançamentos o apelido afeta', () => {
+    const txs = [tx('2026-10-07', 'NETFLIX.COM 01', 55.9, 'assinaturas'), tx('2026-11-07', 'NETFLIX.COM 02', 55.9, 'assinaturas'), tx('2026-11-08', 'Spotify', 21.9, 'assinaturas')];
+    expect(countSameName(txs, 'NETFLIX.COM 03')).toBe(2);
+  });
+
+  it('sem reserva, a dica de investimento é sobre onde deixar a reserva', () => {
+    const txs = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-10', 'Aluguel', 1000, 'moradia')];
+    const inv = investmentTips(txs, '2026-10', settings, NOW);
+    const r = inv.find((t) => t.id === 'inv-reserva')!;
+    expect(r.kind).toBe('investimento');
+    expect(r.steps.join(' ')).toContain('Tesouro Selic');
+    expect(inv.some((t) => t.id === 'inv-prazo')).toBe(false);
+  });
+
+  it('com reserva completa, a dica passa a ser prazo', () => {
+    const txs = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-10', 'Aluguel', 1000, 'moradia')];
+    const comReserva = { ...settings, emergencyBalanceCents: 10000000 };
+    const inv = investmentTips(txs, '2026-10', comReserva, NOW);
+    expect(inv.some((t) => t.id === 'inv-prazo')).toBe(true);
+    expect(inv.some((t) => t.id === 'inv-reserva')).toBe(false);
+  });
+
+  it('avisa quando sobra dinheiro e nada foi investido', () => {
+    const txs = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-10', 'Aluguel', 500, 'moradia')];
+    expect(investmentTips(txs, '2026-10', settings, NOW).some((t) => t.id === 'inv-parado')).toBe(true);
+    const investiu = [...txs, tx('2026-10-12', 'CDB', 1000, 'investimentos')];
+    const inv = investmentTips(investiu, '2026-10', settings, NOW);
+    expect(inv.some((t) => t.id === 'inv-parado')).toBe(false);
+    expect(inv.some((t) => t.id === 'inv-ritmo')).toBe(true);
+  });
+
+  it('toda dica de investimento pede para conferir as regras antes', () => {
+    const txs = [tx('2026-10-05', 'Salário', 5000, 'salario', 'income'), tx('2026-10-10', 'Aluguel', 500, 'moradia')];
+    const inv = investmentTips(txs, '2026-10', settings, NOW);
+    expect(inv.length).toBeGreaterThan(0);
+    for (const t of inv) expect(t.steps.some((s) => s.includes('Confirme as taxas'))).toBe(true);
+  });
+
+  it('sem renda nenhuma, não inventa dica de investimento', () => {
+    expect(investmentTips([], '2026-10', DEFAULT_SETTINGS, NOW)).toHaveLength(0);
   });
 });

@@ -213,35 +213,54 @@ function piecesFrom(content: string): Piece[] {
   return pieces;
 }
 
-/** Junta os pedaços em linhas de texto, de cima para baixo. */
-function linesFrom(pieces: Piece[]): string[] {
-  const rows = new Map<number, Piece[]>();
+export interface Cell {
+  x: number;
+  text: string;
+}
+
+export interface Row {
+  y: number;
+  cells: Cell[];
+  /** A linha inteira, já com as células na ordem da esquerda para a direita. */
+  text: string;
+}
+
+/** Junta os pedaços em linhas, de cima para baixo, preservando a posição de cada célula. */
+function rowsFrom(pieces: Piece[]): Row[] {
+  const byY = new Map<number, Piece[]>();
   for (const p of pieces) {
     // Agrupa por altura com tolerância: a mesma linha costuma variar frações de ponto.
     const key = Math.round(p.y / 3);
-    const list = rows.get(key) ?? [];
+    const list = byY.get(key) ?? [];
     list.push(p);
-    rows.set(key, list);
+    byY.set(key, list);
   }
-  return [...rows.entries()]
+  return [...byY.entries()]
     .sort((a, b) => b[0] - a[0])
-    .map(([, list]) =>
-      list
+    .map(([key, list]) => {
+      const cells = list
         .sort((a, b) => a.x - b.x)
-        .map((p) => p.text)
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim(),
-    )
-    .filter(Boolean);
+        .map((p) => ({ x: p.x, text: p.text.replace(/\s+/g, ' ').trim() }))
+        .filter((c) => c.text);
+      return { y: key * 3, cells, text: cells.map((c) => c.text).join(' ').replace(/\s+/g, ' ').trim() };
+    })
+    .filter((r) => r.text);
+}
+
+/** Linhas de cada página, com posição. Páginas separadas porque o Y reinicia em cada uma. */
+export function extractPdfPages(bytes: Uint8Array): Row[][] {
+  return contentStreams(bytes).map((s) => rowsFrom(piecesFrom(s)));
 }
 
 /** Linhas de texto de um PDF, na ordem em que aparecem na página. */
 export function extractPdfLines(bytes: Uint8Array): string[] {
-  const streams = contentStreams(bytes);
-  const lines: string[] = [];
-  for (const s of streams) lines.push(...linesFrom(piecesFrom(s)));
-  return lines;
+  return extractPdfPages(bytes).flatMap((page) => page.map((r) => r.text));
+}
+
+/** PDF protegido por senha: os streams vêm cifrados e não há texto a extrair. */
+export function isEncrypted(bytes: Uint8Array): boolean {
+  const tail = latin1(bytes, Math.max(0, bytes.length - 4000));
+  return /\/Encrypt\s/.test(tail) || /\/Encrypt\s/.test(latin1(bytes, 0, Math.min(bytes.length, 4000)));
 }
 
 export function isPdf(bytes: Uint8Array): boolean {
@@ -252,20 +271,74 @@ export { encoder as __encodeLatin1 };
 
 // ---------------------------------------------------------------- extrato
 
+import { normalize } from '../categorizer';
 import { parseDateToISO } from '../dates';
 import { parseMoneyToCents } from '../money';
 import type { ParsedRow, ParseResult } from './types';
 
 /*
- * Valor monetário. O "R$" só conta junto ("R" sozinho comeria o R final de
- * CARREFOUR), e exigimos espaço ou início de linha antes, para não pegar
- * pedaço de código. O grupo 1 é o valor; o índice dele dá onde a descrição acaba.
+ * Cada banco monta o extrato de um jeito. O que varia, e como tratamos:
+ *  - data: 10/10/2026, 10/10/26, 10/10, "10 OUT", "10 OUT 2026", "10 de outubro"
+ *  - data só no cabeçalho do dia (Nubank), com os lançamentos abaixo sem data
+ *  - sinal: "-", parênteses, sufixo D/C (Banco do Brasil), ou colunas separadas
+ *    de Crédito e Débito (Bradesco) — aí quem decide é a posição na página
+ *  - coluna de saldo no fim da linha, que não é lançamento
  */
-const MONEY = /(?:^|[\s])(-?\(?(?:R\$\s*)?\d{1,3}(?:\.\d{3})*,\d{2}\)?)/g;
-const DATE_AT_START = /^(\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)\s+/;
-const SKIP_LINE = /saldo|total\b|limite|vencimento|fatura anterior|pagina|p[aá]gina|extrato de|per[ií]odo|ag[eê]ncia|conta corrente|cnpj|cpf|demonstrativo|lan[cç]amentos do dia/i;
 
-/** Ano predominante no documento, para linhas que só trazem dia/mês. */
+const MONEY_G = /(?:^|[\s])(-?\(?(?:R\$\s*)?\d{1,3}(?:\.\d{3})*,\d{2}\)?)/g;
+const MONEY_ONE = /^-?\(?(?:R\$\s*)?\d{1,3}(?:\.\d{3})*,\d{2}\)?$/;
+
+const MESES: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+
+/*
+ * Quando o PDF não traz sinal nem marca C/D, a descrição é o que sobra para
+ * decidir o sentido. "Transferência recebida" e "Salário" são entradas;
+ * tratá-las como gasto estragaria todo o resumo do mês.
+ */
+const INCOME_HINT =
+  /\brecebid[ao]\b|\bcredito\b|\bdeposito\b|\bsalario\b|\bprovento\b|\brendimento\b|\bestorno\b|\breembolso\b|\bdevolucao\b|\brestituicao\b|\bresgate\b|\bentrada\b|\bted recebid|\bdoc recebid|pagamento recebido|\bcashback\b|\bvenda\b|\btransferencia recebida\b/;
+
+/** Colunas que são número de documento, não valor. */
+const DOC_HEADER = /^(docto|documento|doc|n[o°.]? ?doc|numero)/i;
+
+const SKIP_LINE =
+  /saldo|total\b|limite|vencimento|fatura anterior|p[aá]gina|extrato de|per[ií]odo|ag[eê]ncia|c\.?n\.?p\.?j|c\.?p\.?f|demonstrativo|subtotal|encerramento|saldo dispon/i;
+
+const DATE_HEAD =
+  /^(\d{1,2})\s*(?:[/.-]\s*(\d{1,2})(?:\s*[/.-]\s*(\d{2,4}))?|\s+de\s+([a-zç]{3,9})(?:\s+de\s+(\d{4}))?|\s+([a-zç]{3,9})\.?(?:\s+(\d{4}))?)/i;
+
+interface FoundDate {
+  iso: string;
+  /** Quantos caracteres da linha a data ocupou. */
+  length: number;
+}
+
+/** Lê a data no começo da linha, em qualquer um dos formatos usados pelos bancos. */
+function readDate(text: string, year: number): FoundDate | null {
+  const m = text.match(DATE_HEAD);
+  if (!m) return null;
+  const day = Number(m[1]);
+  let month: number | undefined;
+  let y = year;
+
+  if (m[2]) {
+    month = Number(m[2]);
+    if (m[3]) y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+  } else {
+    const name = (m[4] ?? m[6] ?? '').toLowerCase().slice(0, 3);
+    month = MESES[name];
+    const explicit = m[5] ?? m[7];
+    if (explicit) y = Number(explicit);
+  }
+  if (!month || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const iso = parseDateToISO(`${day}/${month}/${y}`);
+  return iso ? { iso, length: m[0].length } : null;
+}
+
+/** Ano predominante no documento, para as linhas que só trazem dia e mês. */
 function guessYear(lines: string[]): number {
   const count = new Map<number, number>();
   for (const l of lines) {
@@ -285,76 +358,164 @@ function guessYear(lines: string[]): number {
   return best;
 }
 
-/**
- * Lê as linhas de texto de um extrato em PDF.
- * Procura "data ... descrição ... valor". Quando a linha traz dois valores
- * (padrão Data | Histórico | Valor | Saldo), o segundo é o saldo e é ignorado.
- */
-export function parsePdfLines(lines: string[]): ParseResult {
+interface Columns {
+  credit?: number;
+  debit?: number;
+  /** Coluna de número de documento, que não deve virar descrição. */
+  doc?: number;
+}
+
+/** Procura um cabeçalho com colunas separadas de crédito e débito (Bradesco e afins). */
+function findColumns(page: Row[]): Columns {
+  for (const row of page) {
+    const hasCredit = row.cells.find((c) => /cr[eé]dito|entrada/i.test(c.text));
+    const hasDebit = row.cells.find((c) => /d[eé]bito|sa[ií]da/i.test(c.text));
+    const doc = row.cells.find((c) => DOC_HEADER.test(c.text))?.x;
+    if (hasCredit && hasDebit && hasCredit.x !== hasDebit.x) {
+      return { credit: hasCredit.x, debit: hasDebit.x, doc };
+    }
+    if (doc !== undefined) return { doc };
+  }
+  return {};
+}
+
+const near = (a: number, b: number) => Math.abs(a - b) < 60;
+
+export function parsePdfPages(pages: Row[][]): ParseResult {
   const warnings: string[] = [];
   const rows: ParsedRow[] = [];
-  const year = guessYear(lines);
+  const allText = pages.flatMap((p) => p.map((r) => r.text));
+  const year = guessYear(allText);
   let skipped = 0;
   let ambiguous = 0;
-  let hadBalanceColumn = false;
+  let usedColumns = false;
+  let hadBalance = false;
 
-  for (const line of lines) {
-    const dateMatch = line.match(DATE_AT_START);
-    if (!dateMatch) continue;
-    if (SKIP_LINE.test(line)) continue;
+  for (const page of pages) {
+    const cols = findColumns(page);
+    let currentDate: string | null = null;
 
-    const matches = [...line.matchAll(MONEY)];
-    if (!matches.length) continue;
+    for (const row of page) {
+      const text = row.text;
+      const found = readDate(text, year);
+      const money = [...text.matchAll(MONEY_G)];
 
-    const first = matches[0];
-    const firstValue = first[1];
-    const valueAt = (first.index ?? 0) + first[0].indexOf(firstValue);
-    if (matches.length > 1) hadBalanceColumn = true;
+      // Cabeçalho de dia ("10 DE OUTUBRO"): guarda a data para as linhas de baixo.
+      if (found && !money.length) {
+        currentDate = found.iso;
+        continue;
+      }
+      if (!money.length) continue;
+      if (SKIP_LINE.test(text)) continue;
 
-    let dateText = dateMatch[1];
-    if (!/[/.-]\d{2,4}$/.test(dateText) || dateText.split(/[/.-]/).length === 2) dateText = `${dateText}/${year}`;
-    const date = parseDateToISO(dateText);
+      const date = found?.iso ?? currentDate;
+      if (!date) {
+        skipped++;
+        continue;
+      }
 
-    const description = line.slice(dateMatch[0].length, valueAt).replace(/\s+/g, ' ').trim();
-    const cents = parseMoneyToCents(firstValue);
-    if (!date || cents === null || cents === 0) {
-      skipped++;
-      continue;
+      let signed: number | null = null;
+      let valueAt = -1;
+      let valueLen = 0;
+
+      // 1) Colunas separadas de crédito e débito: a posição decide o sinal.
+      if (cols.credit !== undefined && cols.debit !== undefined) {
+        for (const cell of row.cells) {
+          if (!MONEY_ONE.test(cell.text)) continue;
+          const cents = parseMoneyToCents(cell.text);
+          if (cents === null || cents === 0) continue;
+          if (near(cell.x, cols.credit)) {
+            signed = Math.abs(cents);
+          } else if (near(cell.x, cols.debit)) {
+            signed = -Math.abs(cents);
+          } else {
+            continue;
+          }
+          usedColumns = true;
+          valueAt = text.indexOf(cell.text);
+          valueLen = cell.text.length;
+          break;
+        }
+      }
+
+      // 2) Caso geral: primeiro valor da linha; o que vier depois é saldo.
+      if (signed === null) {
+        const first = money[0];
+        const value = first[1];
+        valueAt = (first.index ?? 0) + first[0].indexOf(value);
+        valueLen = value.length;
+        const cents = parseMoneyToCents(value);
+        if (cents === null || cents === 0) {
+          skipped++;
+          continue;
+        }
+        if (money.length > 1) hadBalance = true;
+        const after = text.slice(valueAt + valueLen).trim();
+        const marker = after.match(/^([CD])\b/i)?.[1]?.toUpperCase();
+        if (marker === 'C') signed = Math.abs(cents);
+        else if (marker === 'D') signed = -Math.abs(cents);
+        else if (cents < 0 || value.trim().startsWith('(')) signed = -Math.abs(cents);
+        else if (INCOME_HINT.test(normalize(text))) signed = Math.abs(cents);
+        else {
+          signed = -Math.abs(cents);
+          ambiguous++;
+        }
+      }
+
+      const start = found ? found.length : 0;
+      let description = text
+        .slice(start, valueAt > start ? valueAt : undefined)
+        .replace(/\s+/g, ' ')
+        .replace(/^[-–—:|]+\s*/, '')
+        .trim();
+      // Tira o número do documento, que em alguns extratos fica entre a descrição e o valor.
+      if (cols.doc !== undefined) {
+        const docCell = row.cells.find((c) => near(c.x, cols.doc!) && /^\d[\d.-]*$/.test(c.text));
+        if (docCell) description = description.replace(docCell.text, '').replace(/\s+/g, ' ').trim();
+      }
+      description = description.replace(/\s+\d{5,}$/, '').trim();
+
+      rows.push({ date, description: description || 'Sem descrição', amountCents: signed });
     }
-
-    // Sinal: "-" e parênteses são saída; "D"/"C" logo após o valor são débito/crédito.
-    const after = line.slice(valueAt + firstValue.length).trim();
-    const marker = after.match(/^([CD])\b/i)?.[1]?.toUpperCase();
-    let signed: number;
-    if (marker === 'C') signed = Math.abs(cents);
-    else if (marker === 'D') signed = -Math.abs(cents);
-    else if (cents < 0 || firstValue.trim().startsWith('(')) signed = -Math.abs(cents);
-    else {
-      signed = -Math.abs(cents);
-      ambiguous++;
-    }
-
-    rows.push({ date, description: description || 'Sem descrição', amountCents: signed });
   }
 
   if (!rows.length) {
     warnings.push(
-      lines.length
-        ? 'Li o texto do PDF, mas não reconheci linhas de lançamento (data, descrição e valor). Se puder, exporte o extrato em CSV ou OFX.'
-        : 'Não há texto neste PDF — ele provavelmente é digitalizado (uma imagem). Exporte o extrato em CSV ou OFX.',
+      allText.length
+        ? 'Li o texto do PDF, mas não reconheci linhas de lançamento (data, descrição e valor). Toque em "Ver o que foi lido" e me mostre essas linhas.'
+        : 'Não há texto neste PDF — ele é digitalizado (uma imagem) ou está protegido por senha. Exporte o extrato em CSV ou OFX.',
     );
   } else {
+    if (usedColumns) warnings.push('Usei as colunas de crédito e débito do extrato para definir entradas e saídas.');
     if (ambiguous) {
       warnings.push(
-        `${ambiguous} lançamentos não traziam sinal nem marca C/D: entraram como saída. Confira na prévia e toque para corrigir.`,
+        `${ambiguous} lançamentos não traziam sinal nem marca C/D: entraram como saída. Toque na linha para corrigir.`,
       );
     }
-    if (hadBalanceColumn) warnings.push('O PDF parece ter coluna de saldo; usei sempre o primeiro valor da linha.');
+    if (hadBalance) warnings.push('A linha tem mais de um valor (provável coluna de saldo); usei sempre o primeiro.');
   }
 
   return { format: 'pdf', rows, skipped, warnings, looksLikeCardInvoice: false };
 }
 
 export function parsePdf(bytes: Uint8Array): ParseResult {
-  return parsePdfLines(extractPdfLines(bytes));
+  if (isEncrypted(bytes)) {
+    return {
+      format: 'pdf',
+      rows: [],
+      skipped: 0,
+      warnings: ['Este PDF está protegido por senha, então o texto não pode ser lido. Exporte o extrato em CSV ou OFX, ou salve o PDF sem senha.'],
+      looksLikeCardInvoice: false,
+    };
+  }
+  return parsePdfPages(extractPdfPages(bytes));
+}
+
+/** Linhas lidas do PDF, para mostrar na tela quando nada é reconhecido. */
+export function pdfDiagnostic(bytes: Uint8Array): string[] {
+  try {
+    return extractPdfLines(bytes).slice(0, 40);
+  } catch {
+    return [];
+  }
 }

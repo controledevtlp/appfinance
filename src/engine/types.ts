@@ -6,6 +6,8 @@ export type Group = 'necessidades' | 'desejos' | 'poupanca' | 'renda' | 'ignorar
 export interface Category {
   id: string;
   name: string;
+  /** Nome curto, para a grade de escolha, onde não cabe o nome inteiro. */
+  short: string;
   group: Group;
   icon: string; // nome do ícone Ionicons
   /** Percentual ideal da renda líquida mensal (0–100). */
@@ -52,6 +54,8 @@ export interface Settings {
    * aluguel nem investir), mas aumenta o teto de mercado e alimentação fora.
    */
   mealBenefitCents: number;
+  /** Apelidos dados a gastos, pela chave de agrupamento da descrição. */
+  aliases: Record<string, string>;
   /** Quanto já existe guardado como reserva de emergência, em centavos. */
   emergencyBalanceCents: number;
   /** Limites personalizados por categoria (centavos/mês). */
@@ -63,6 +67,7 @@ export const DEFAULT_SETTINGS: Settings = {
   monthlyIncomeCents: 0,
   incomeSources: [],
   mealBenefitCents: 0,
+  aliases: {},
   emergencyBalanceCents: 0,
   budgetOverrides: {},
   notifications: { weeklySummary: true, budgetAlerts: true, dailyReminder: false },
@@ -116,6 +121,8 @@ export type TipSeverity = 'alerta' | 'atencao' | 'info' | 'positivo';
 export interface Tip {
   id: string;
   severity: TipSeverity;
+  /** Onde a dica aparece: economizar gasto ou fazer o dinheiro render. */
+  kind?: 'economia' | 'investimento';
   title: string;
   message: string;
   categoryId?: string;

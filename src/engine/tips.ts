@@ -353,3 +353,108 @@ export function totalPotentialSavings(tips: Tip[]): number {
   return tips.filter((t) => t.id !== 'poupanca' && t.id !== 'projecao').reduce((a, t) => a + t.savingsCents, 0);
 }
 
+
+// ------------------------------------------------------------ investimentos
+
+/*
+ * Dicas de renda fixa. São informação geral sobre como o dinheiro costuma ser
+ * organizado — reserva primeiro, depois prazo —, não recomendação de produto
+ * nem de instituição. As regras (imposto, isenção, FGC) mudam com o tempo,
+ * então cada bloco pede para conferir antes de investir.
+ */
+
+const IR_TABLE =
+  'O imposto cai com o tempo: 22,5% até 180 dias, 20% até 360, 17,5% até 720 e 15% acima disso. Prazo mais longo rende mais líquido.';
+
+const CONFERIR = 'Confirme as taxas e regras atuais antes de investir: elas mudam.';
+
+export function investmentTips(
+  txs: Transaction[],
+  month: string,
+  settings: Settings,
+  now: Date = new Date(),
+): Tip[] {
+  const summary = computeMonthSummary(txs, month, settings, now);
+  const reserve = emergencyStatus(txs, month, settings, now);
+  const tips: Tip[] = [];
+  const base = summary.totalResourcesCents;
+  if (base <= 0) return tips;
+
+  const leftover = base - summary.expenseCents - summary.investedCents;
+
+  // 1) Enquanto a reserva não está pronta, ela é o único destino.
+  if (reserve.monthsCovered < 6 && reserve.essentialCents > 0) {
+    tips.push({
+      id: 'inv-reserva',
+      kind: 'investimento',
+      severity: reserve.monthsCovered < 3 ? 'atencao' : 'info',
+      title: 'Onde deixar a reserva de emergência',
+      message: `Faltam ${formatBRL(Math.max(0, reserve.targetCents - reserve.balanceCents))} para os 6 meses. Reserva precisa de duas coisas: render todo dia e poder ser sacada no mesmo dia.`,
+      savingsCents: 0,
+      steps: [
+        'Tesouro Selic: título público, acompanha a taxa Selic e tem liquidez diária. É o mais simples para começar.',
+        'CDB de liquidez diária que pague perto de 100% do CDI ou mais. Tem garantia do FGC até R$ 250 mil por instituição e por CPF.',
+        'Fuja da poupança para esse dinheiro: com a Selic acima de 8,5% ao ano ela rende menos que as opções acima.',
+        'Não use previdência, fundo com carência ou CDB de vencimento longo para a reserva: o dinheiro precisa estar disponível hoje.',
+        CONFERIR,
+      ],
+    });
+  }
+
+  // 2) Reserva pronta: a conversa passa a ser prazo.
+  if (reserve.monthsCovered >= 6) {
+    tips.push({
+      id: 'inv-prazo',
+      kind: 'investimento',
+      severity: 'positivo',
+      title: 'Reserva pronta: agora o critério é prazo',
+      message: 'Com a emergência coberta, cada dinheiro vai para um prazo diferente. Quanto mais tempo você consegue deixar, mais ele rende líquido.',
+      savingsCents: 0,
+      steps: [
+        'Até 2 anos (viagem, troca de carro): CDB, LCI ou LCA pós-fixados, em % do CDI. LCI e LCA hoje são isentas de imposto de renda para pessoa física.',
+        'De 5 anos para cima (aposentadoria, entrada de imóvel): Tesouro IPCA+ garante ganho acima da inflação, desde que você leve até o vencimento.',
+        IR_TABLE,
+        'Compare sempre pelo líquido: um CDB de 110% do CDI com imposto pode render menos que uma LCI isenta de 95%.',
+        CONFERIR,
+      ],
+    });
+  }
+
+  // 3) Sobrou dinheiro e nada foi investido no mês.
+  if (leftover > 20000 && summary.investedCents === 0) {
+    tips.push({
+      id: 'inv-parado',
+      kind: 'investimento',
+      severity: 'atencao',
+      title: `Sobraram ${formatBRL(leftover)} e nada foi investido`,
+      message: 'Dinheiro parado na conta corrente perde para a inflação todo mês, em silêncio.',
+      savingsCents: 0,
+      steps: [
+        'Programe uma transferência automática para o dia seguinte ao salário: o que não passa pela conta não é gasto.',
+        'Comece pelo Tesouro Selic ou por um CDB de liquidez diária, que deixam sacar a qualquer momento.',
+        `Mesmo ${formatBRL(Math.round(leftover / 2))} por mês já constroem a reserva — o valor importa menos que a constância.`,
+        CONFERIR,
+      ],
+    });
+  }
+
+  // 4) Já investe: o próximo passo é subir o degrau.
+  if (summary.investedCents > 0) {
+    const pct = (summary.investedCents / base) * 100;
+    tips.push({
+      id: 'inv-ritmo',
+      kind: 'investimento',
+      severity: 'positivo',
+      title: `Você investiu ${formatBRL(summary.investedCents)} (${pct.toFixed(0)}% da renda)`,
+      message: pct >= 20 ? 'Está no ritmo da meta de 20%. Agora o ganho vem de escolher bem o prazo.' : 'Bom ritmo. Subir um ponto percentual por mês quase não se sente no orçamento.',
+      savingsCents: 0,
+      steps: [
+        'Revise uma vez por ano se o que você tem ainda paga perto de 100% do CDI; produtos antigos costumam ficar para trás.',
+        'Evite resgatar antes de 180 dias: é a faixa de imposto mais alta, 22,5%.',
+        CONFERIR,
+      ],
+    });
+  }
+
+  return tips;
+}

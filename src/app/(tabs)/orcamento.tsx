@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { Appear, Bar, Press } from '@/components/motion';
-import { Button, Card, CategoryBadge, Field, MonthSwitcher, Screen, Txt } from '@/components/ui';
+import { Button, Card, CategoryBadge, Field, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { mealBenefitStatus } from '@/engine/budget';
 import { GROUP_LABEL } from '@/engine/categories';
@@ -58,7 +58,9 @@ export default function Orcamento() {
               <Txt variant="h2">Cartão alimentação</Txt>
               <Txt variant="muted">{formatBRL(benefit.remainingCents)} disponível</Txt>
             </View>
-            <Bar ratio={benefit.progress} color={benefit.progress >= 1 ? t.warning : t.primary} height={10} />
+            <Press onPress={() => router.push({ pathname: '/detalhe', params: { kind: 'food' } })} accessibilityLabel="Ver gastos de alimentação">
+              <Bar ratio={benefit.progress} color={benefit.progress >= 1 ? t.warning : t.primary} height={10} />
+            </Press>
             <Txt variant="small">
               {formatBRL(benefit.spentCents)} de {formatBRL(benefit.limitCents)} usados em mercado e alimentação fora.
               {benefit.spentCents > benefit.limitCents
@@ -80,7 +82,12 @@ export default function Orcamento() {
               <Txt variant="small">{formatBRL(group.spentCents)} de {formatBRL(group.idealCents)}</Txt>
             </View>
             {cats.map((u, i) => (
-              <Press key={u.category.id} onPress={() => open(u)} accessibilityRole="button" accessibilityLabel={`Editar limite de ${u.category.name}`} style={{ gap: 6 }}>
+              <Press
+                key={u.category.id}
+                onPress={() => router.push({ pathname: '/detalhe', params: { categoryId: u.category.id } })}
+                accessibilityRole="button"
+                accessibilityLabel={`Ver gastos de ${u.category.name}`}
+                style={{ gap: 6 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <CategoryBadge categoryId={u.category.id} size={32} />
                   <View style={{ flex: 1 }}>
@@ -91,6 +98,9 @@ export default function Orcamento() {
                     </Txt>
                   </View>
                   <Txt variant="muted" color={statusColor(u)} style={{ fontWeight: '700' }}>{u.limitCents > 0 || u.spentCents > 0 ? `${Math.round(u.ratio * 100)}%` : '—'}</Txt>
+                  <Press onPress={() => open(u)} hitSlop={10} accessibilityLabel={`Editar limite de ${u.category.name}`}>
+                    <Icon name="create-outline" size={18} color={t.muted} />
+                  </Press>
                 </View>
                 <Bar ratio={u.ratio} color={statusColor(u)} markerAt={1} height={6} delay={gi * 60 + i * 40} />
               </Press>

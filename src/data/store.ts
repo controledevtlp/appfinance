@@ -19,6 +19,8 @@ function mergeSettings(raw: Partial<Settings> | null | undefined): Settings {
     ...DEFAULT_SETTINGS,
     ...(raw ?? {}),
     budgetOverrides: { ...(raw?.budgetOverrides ?? {}) },
+    aliases: { ...(raw?.aliases ?? {}) },
+    incomeSources: raw?.incomeSources ?? [],
     notifications: { ...DEFAULT_SETTINGS.notifications, ...(raw?.notifications ?? {}) },
   };
 }
