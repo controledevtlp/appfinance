@@ -29,7 +29,7 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 - Excessos menores que R$ 20 não geram dica.
 - A soma "você libera até X/mês" não conta duas vezes: juros que já estão numa categoria estourada entram uma vez só.
 
-Todo o motor é TypeScript puro e testado: `npm test` (79 testes).
+Todo o motor é TypeScript puro e testado: `npm test` (88 testes).
 
 ## Rodar no computador
 
@@ -80,6 +80,9 @@ Ao ler o extrato, o app agrupa os lançamentos por descrição (ignorando númer
 ## Ver os detalhes de qualquer número (drill down)
 Os valores do painel e do orçamento são tocáveis e abrem a tela de detalhe com **o mesmo filtro usado no cálculo**: Receitas, Despesas, Investido, cada grupo do 50/30/20, cada fatia do gráfico, cada categoria do orçamento, os gastos constantes e o cartão alimentação. A tela mostra o total, a média, a composição por categoria e a lista do maior para o menor — que é a ordem útil para achar o que pesou.
 
+## O app aprende suas correções
+Trocou a categoria de um lançamento na importação ou na tela de edição? A escolha é guardada pela chave de agrupamento da descrição (sem números), e na próxima importação aquele estabelecimento já vem na categoria certa. Vale para "SAUL E PIMENTA GASTROB" tanto quanto para "UAI LAVA BRASOPOLIS 047".
+
 ## Dar nome aos gastos
 O extrato traz "ENEL DISTRIBUICAO SP 0001". No lançamento, o campo **Dê um nome** renomeia, e quando o gasto se repete aparece a opção *"usar este nome nos N lançamentos iguais"*. O apelido é guardado pela chave de agrupamento (sem números nem pontuação), então vale para as parcelas e para os próximos meses importados. O nome original do extrato continua visível na tela de edição.
 
@@ -102,7 +105,11 @@ No app/internet banking, exporte o extrato em **CSV, OFX ou PDF** (ou a fatura d
 - Depois de importar, o app vai para o mês com mais lançamentos do arquivo, em vez de abrir no mês atual vazio.
 
 ### PDF
-O leitor de PDF é próprio (`src/engine/import/pdf.ts`): acha os streams de conteúdo, descomprime o que está em FlateDecode (via `fflate`), lê os operadores de texto (`Tj`, `TJ`, `Td`, `Tm`) e remonta as linhas **guardando a posição de cada célula na página**. Com isso ele entende as variações reais dos bancos:
+O leitor de PDF é próprio (`src/engine/import/pdf.ts`). Ele indexa os objetos do arquivo (`12 0 obj … endobj`) em vez de caçar a palavra `stream` solta — que também aparece dentro de fontes e imagens e faria o leitor inflar lixo —, descomprime FlateDecode (via `fflate`), lê os operadores de texto (`Tj`, `TJ`, `Td`, `Tm`, `Tf`) e remonta as linhas **guardando a posição de cada célula na página**.
+
+**Fontes embutidas (Identity-H).** É assim que os bancos geram PDF hoje: o texto não são letras, são índices de glifo de 2 bytes, e cada fonte numera os seus. Lido como ASCII, "Lucas" vira "/XFDV". O leitor resolve o `/Resources → /Font` de cada página, lê o CMap `/ToUnicode` de cada fonte (`bfchar` e `bfrange`) e traduz conforme a fonte ativa no momento.
+
+Com isso ele entende as variações reais dos bancos:
 
 | O que varia | Como é tratado |
 |---|---|
@@ -113,9 +120,14 @@ O leitor de PDF é próprio (`src/engine/import/pdf.ts`): acha os streams de con
 | sufixo `D`/`C` (Banco do Brasil) | débito e crédito |
 | coluna de saldo no fim da linha | descartada: vale sempre o primeiro valor |
 | número de documento entre a descrição e o valor | removido da descrição |
+| seções "Total de entradas" / "Total de saídas" com lançamentos sem sinal (Nubank) | a seção do dia define o sinal |
+| lançamento que sobra no topo da página seguinte | a data atravessa a página |
+| CPF mascarado no meio da descrição (`•••.871.467-••`) | removido |
 | sem sinal nenhum (faturas) | entra como saída; "recebido", "salário", "depósito" e afins viram entrada |
 
-Há um teste por formato em `src/engine/__tests__/bancos.test.ts`, cobrindo Nubank (fatura e extrato), Bradesco, Banco do Brasil, Itaú, Inter, Neon, Banco Pan e BrasilCard. **Importante:** os PDFs dos testes são montados a partir do layout típico de cada banco — não são arquivos reais exportados dessas contas. Se o seu extrato não for lido, a tela mostra o texto que o app conseguiu extrair, e é isso que permite ajustar o leitor.
+Há um teste por formato em `src/engine/__tests__/bancos.test.ts`, cobrindo Nubank (fatura e extrato), Bradesco, Banco do Brasil, Itaú, Inter, Neon, Banco Pan e BrasilCard, mais um que monta um PDF com fonte Identity-H de verdade para exercitar a decodificação pelo `/ToUnicode`.
+
+O formato do Nubank foi **conferido contra um extrato real**: as 26 linhas saíram com data, descrição e sinal corretos, e a soma bateu com os totais que o próprio documento declara (entradas e saídas, ao centavo). Os PDFs dos testes são reconstruções desse layout, não o arquivo original. Os outros sete bancos são modelados a partir do formato típico de cada um e **ainda precisam ser validados com arquivos reais**. Se um extrato não for lido, a tela mostra o texto que o app conseguiu extrair — é isso que permite ajustar o leitor.
 **Limites honestos:** PDF digitalizado (foto ou scan) não tem texto e não dá para ler — o app avisa e pede CSV/OFX. PDF protegido por senha também não abre, e o app diz isso. Fontes com codificação própria podem sair ilegíveis. Quando a linha não traz sinal nem `C`/`D`, o lançamento entra como saída e o app avisa: na prévia dá para tocar e escolher uma categoria de receita para virar entrada. **CSV e OFX continuam sendo os formatos mais confiáveis.**
 
 ### Se o arquivo não abrir

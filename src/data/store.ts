@@ -20,6 +20,7 @@ function mergeSettings(raw: Partial<Settings> | null | undefined): Settings {
     ...(raw ?? {}),
     budgetOverrides: { ...(raw?.budgetOverrides ?? {}) },
     aliases: { ...(raw?.aliases ?? {}) },
+    categoryRules: { ...(raw?.categoryRules ?? {}) },
     incomeSources: raw?.incomeSources ?? [],
     notifications: { ...DEFAULT_SETTINGS.notifications, ...(raw?.notifications ?? {}) },
   };

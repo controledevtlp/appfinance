@@ -17,6 +17,7 @@ export const DEMO_SETTINGS: Settings = {
   incomeSources: [{ id: 'demo-salario', label: 'Salário', cents: 650000 }],
   mealBenefitCents: 80000,
   aliases: { 'conta de luz enel': 'Luz', 'smart fit academia': 'Academia', 'posto shell combustivel': 'Gasolina' },
+  categoryRules: {},
   emergencyBalanceCents: 900000,
   budgetOverrides: {},
   notifications: { weeklySummary: true, budgetAlerts: true, dailyReminder: false },

@@ -56,6 +56,11 @@ export interface Settings {
   mealBenefitCents: number;
   /** Apelidos dados a gastos, pela chave de agrupamento da descrição. */
   aliases: Record<string, string>;
+  /**
+   * Categorias que você corrigiu à mão, pela chave de agrupamento. O app
+   * aprende: na próxima importação o mesmo estabelecimento já vem certo.
+   */
+  categoryRules: Record<string, string>;
   /** Quanto já existe guardado como reserva de emergência, em centavos. */
   emergencyBalanceCents: number;
   /** Limites personalizados por categoria (centavos/mês). */
@@ -68,6 +73,7 @@ export const DEFAULT_SETTINGS: Settings = {
   incomeSources: [],
   mealBenefitCents: 0,
   aliases: {},
+  categoryRules: {},
   emergencyBalanceCents: 0,
   budgetOverrides: {},
   notifications: { weeklySummary: true, budgetAlerts: true, dailyReminder: false },

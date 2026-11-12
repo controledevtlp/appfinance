@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parsePdf } from '../import';
-import { LAYOUTS, makeBankPdf } from './bankPdf';
+import { extractPdfLines, parsePdf } from '../import';
+import { LAYOUTS, makeBankPdf, makeIdentityPdf, NUBANK_REAL } from './bankPdf';
 
 /**
  * Um caso por formato de extrato. Os PDFs são montados a partir do layout
@@ -89,5 +89,54 @@ describe('extratos em PDF dos bancos', () => {
     const r = parsePdf(withEncrypt);
     expect(r.rows).toHaveLength(0);
     expect(r.warnings.join(' ')).toContain('protegido por senha');
+  });
+});
+
+/*
+ * Formato real do Nubank: fonte embutida Identity-H. Sem ler o /ToUnicode o
+ * texto sai cifrado ("Lucas" vira "/XFDV"), que foi o que acontecia antes.
+ */
+describe('Nubank real (fonte embutida Identity-H)', () => {
+  const pdf = makeIdentityPdf(NUBANK_REAL);
+
+  it('decodifica o texto pelo mapa da fonte, não pelos bytes crus', () => {
+    const lines = extractPdfLines(pdf);
+    expect(lines[0]).toBe('Fulano de Tal');
+    expect(lines.some((l) => l.includes('Compra no débito Mandrebar'))).toBe(true);
+    expect(lines.join(' ')).not.toContain('/XFDV');
+  });
+
+  it('bate com os totais que o próprio extrato declara', () => {
+    const r = parsePdf(pdf);
+    const entradas = r.rows.filter((x) => x.amountCents > 0).reduce((a, x) => a + x.amountCents, 0);
+    const saidas = r.rows.filter((x) => x.amountCents < 0).reduce((a, x) => a - x.amountCents, 0);
+    expect(entradas).toBe(176457); // "Total de entradas +1.764,57"
+    expect(saidas).toBe(161324); // "Total de saídas -1.613,24"
+  });
+
+  it('usa a seção do dia para definir entrada e saída', () => {
+    const rows = parsePdf(pdf).rows;
+    expect(rows[0]).toMatchObject({ date: '2026-11-01', amountCents: 10000 });
+    expect(rows[1]).toMatchObject({ date: '2026-11-01', description: 'Compra no débito Mandrebar', amountCents: -5600 });
+    expect(rows[2].date).toBe('2026-11-02');
+  });
+
+  it('tira o CPF mascarado e os separadores repetidos da descrição', () => {
+    const rows = parsePdf(pdf).rows;
+    expect(rows[0].description).toBe('Transferência recebida pelo Pix FULANO DE TAL');
+    expect(rows.find((r) => r.description.includes('CAIXA'))!.description).toBe(
+      'Transferência recebida pelo Pix FULANO DE TAL - CAIXA',
+    );
+  });
+
+  it('não confunde agência, conta e período com lançamento', () => {
+    const rows = parsePdf(pdf).rows;
+    expect(rows.every((r) => !/Agência|Conta:|Saldo|VALORES EM/i.test(r.description))).toBe(true);
+    // "R$ 7,51" solto no resumo não é lançamento.
+    expect(rows.every((r) => r.amountCents !== 751 && r.amountCents !== -751)).toBe(true);
+  });
+
+  it('avisa sobre transferências entre contas próprias', () => {
+    expect(parsePdf(pdf).warnings.join(' ')).toContain('entre as suas próprias contas');
   });
 });

@@ -15,7 +15,7 @@ import { buildDemoTransactions, DEMO_SETTINGS } from '../demo';
 import { healthScore } from '../health';
 import { decodeBytes, groupRecurringCandidates, parseStatement, toPreviewRows } from '../import';
 import { formatBRL, parseMoneyToCents } from '../money';
-import { countSameName, displayName, withAlias } from '../naming';
+import { countSameName, displayName, withAlias, withCategoryRule } from '../naming';
 import { detectSubscriptions, generateTips, investmentTips } from '../tips';
 import { getCategory } from '../categories';
 import { DEFAULT_SETTINGS, type Settings, type Transaction } from '../types';
@@ -567,5 +567,24 @@ describe('apelidos e dicas de investimento', () => {
 
   it('sem renda nenhuma, não inventa dica de investimento', () => {
     expect(investmentTips([], '2026-10', DEFAULT_SETTINGS, NOW)).toHaveLength(0);
+  });
+});
+
+describe('o app aprende as correções de categoria', () => {
+  const rows = [{ date: '2026-11-07', description: 'SAUL E PIMENTA GASTROB', amountCents: -2600 }];
+
+  it('sem regra, usa o palpite automático', () => {
+    expect(toPreviewRows(rows, new Set())[0].categoryId).toBe('outros');
+  });
+
+  it('com a regra aprendida, já vem na categoria certa', () => {
+    const rules = withCategoryRule({}, 'SAUL E PIMENTA GASTROB', 'delivery');
+    expect(toPreviewRows(rows, new Set(), rules)[0].categoryId).toBe('delivery');
+  });
+
+  it('a regra ignora números, então vale para o mesmo lugar em outro dia', () => {
+    const rules = withCategoryRule({}, 'UAI LAVA BRASOPOLIS 001', 'transporte');
+    const outro = [{ date: '2026-11-09', description: 'UAI LAVA BRASOPOLIS 047', amountCents: -3580 }];
+    expect(toPreviewRows(outro, new Set(), rules)[0].categoryId).toBe('transporte');
   });
 });

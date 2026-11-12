@@ -17,6 +17,7 @@ import {
 } from '@/engine/import';
 import { formatBRL } from '@/engine/money';
 import type { TxType } from '@/engine/types';
+import { withCategoryRule } from '@/engine/naming';
 import { notify } from '@/lib/dialog';
 import { readPickedFile, SAMPLE_STATEMENT } from '@/lib/readFile';
 import { radius, useTheme } from '@/theme';
@@ -26,7 +27,7 @@ const GROUPS_COLLAPSED = 6;
 
 export default function Importar() {
   const t = useTheme();
-  const { transactions, addTransactions, settings, setMonth } = useApp();
+  const { transactions, addTransactions, settings, saveSettings, setMonth } = useApp();
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [fileName, setFileName] = useState('');
   const [readError, setReadError] = useState<string | null>(null);
@@ -55,11 +56,11 @@ export default function Importar() {
   const rows = useMemo(() => {
     if (!result) return [];
     const known = new Set(transactions.map((x) => x.externalId).filter((x): x is string => !!x));
-    return toPreviewRows(result.rows, known).map((r, i) => {
+    return toPreviewRows(result.rows, known, settings.categoryRules).map((r, i) => {
       const categoryId = overrides[i] ?? r.categoryId;
       return { ...r, categoryId, type: typeOverrides[i] ?? r.type };
     });
-  }, [result, transactions, overrides, typeOverrides]);
+  }, [result, transactions, overrides, typeOverrides, settings.categoryRules]);
 
   // Mapeamento instantâneo: assim que o arquivo é lido, os candidatos a gasto fixo já aparecem.
   const groups = useMemo(() => groupRecurringCandidates(rows), [rows]);
@@ -138,6 +139,16 @@ export default function Importar() {
     if (!fresh.length) return;
     setBusy(true);
     try {
+      // O que foi corrigido à mão vira regra: na próxima importação já vem certo.
+      const corrected = Object.entries(overrides);
+      if (corrected.length) {
+        let rules = settings.categoryRules;
+        for (const [index, categoryId] of corrected) {
+          const row = rows[Number(index)];
+          if (row) rules = withCategoryRule(rules, row.description, categoryId);
+        }
+        await saveSettings({ ...settings, categoryRules: rules });
+      }
       await addTransactions(fresh.map(({ duplicate: _d, isRecurring, ...tx }) => ({ ...tx, recurring: isRecurring })));
       // O extrato costuma ser de um mês passado: leva o app para lá, senão a
       // tela abre no mês atual vazio e parece que a importação não funcionou.
@@ -327,7 +338,10 @@ export default function Importar() {
         <Appear index={2}>
           <Card>
             <Txt variant="h2">Prévia</Txt>
-            <Txt variant="small">Toque na linha para corrigir a categoria. O que já foi importado antes fica esmaecido.</Txt>
+            <Txt variant="small">
+              Toque na linha para corrigir a categoria — o app guarda a correção e aplica nas próximas importações. O que já
+              foi importado antes fica esmaecido.
+            </Txt>
             {rows.slice(0, MAX_ROWS).map((r, i) => {
               const isRecurring = selected.has(keyByIndex.get(i) ?? '');
               return (

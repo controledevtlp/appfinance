@@ -8,7 +8,7 @@ import { EXPENSE_CATEGORIES, getCategory, INCOME_CATEGORIES } from '@/engine/cat
 import { categorize } from '@/engine/categorizer';
 import { formatDateBR, parseDateToISO, todayISO, toISO } from '@/engine/dates';
 import { parseMoneyToCents } from '@/engine/money';
-import { countSameName, displayName, withAlias } from '@/engine/naming';
+import { countSameName, displayName, withAlias, withCategoryRule } from '@/engine/naming';
 import type { TxType } from '@/engine/types';
 import { confirmDialog, notify } from '@/lib/dialog';
 import { radius, useTheme } from '@/theme';
@@ -32,6 +32,7 @@ export default function Transacao() {
   const list = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const sameName = existing ? countSameName(transactions, existing.description) : 0;
   const renamed = !!existing && name.trim() !== existing.description.trim();
+  const recategorized = !!existing && categoryId !== existing.categoryId;
 
   const changeType = (next: TxType) => {
     setType(next);
@@ -60,8 +61,12 @@ export default function Transacao() {
       const label = name.trim() || getCategory(categoryId).name;
       if (existing) {
         // Renomear um lançamento importado pode valer para todos os iguais.
-        if (applyToAll && renamed) {
-          await saveSettings({ ...settings, aliases: withAlias(settings.aliases, existing.description, label) });
+        if (applyToAll) {
+          await saveSettings({
+            ...settings,
+            aliases: renamed ? withAlias(settings.aliases, existing.description, label) : settings.aliases,
+            categoryRules: withCategoryRule(settings.categoryRules, existing.description, categoryId),
+          });
           await updateTransaction({ ...existing, amountCents: Math.abs(cents), date: iso, type, categoryId, recurring });
         } else {
           await updateTransaction({ ...existing, description: label, amountCents: Math.abs(cents), date: iso, type, categoryId, recurring });
@@ -117,10 +122,16 @@ export default function Transacao() {
             placeholderTextColor={t.muted}
             style={{ borderWidth: 1, borderColor: t.border, backgroundColor: t.bg, color: t.text, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 }}
           />
-          {existing && renamed && sameName > 1 ? (
+          {existing && (renamed || recategorized) ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Txt style={{ fontWeight: '600' }}>Usar este nome nos {sameName} lançamentos iguais</Txt>
+                <Txt style={{ fontWeight: '600' }}>
+                  {renamed && recategorized
+                    ? 'Usar este nome e esta categoria nos lançamentos iguais'
+                    : renamed
+                      ? `Usar este nome nos ${sameName} lançamentos iguais`
+                      : 'Lembrar esta categoria para os lançamentos iguais'}
+                </Txt>
                 <Txt variant="small">Vale também para os próximos meses que você importar.</Txt>
               </View>
               <Switch value={applyToAll} onValueChange={setApplyToAll} trackColor={{ true: t.primary, false: t.border }} />

@@ -16,6 +16,17 @@ export function nameOf(tx: Pick<Transaction, 'description'>, settings: Settings)
   return displayName(tx.description, settings.aliases);
 }
 
+/** Guarda a categoria escolhida à mão para este estabelecimento. */
+export function withCategoryRule(
+  rules: Settings['categoryRules'],
+  description: string,
+  categoryId: string,
+): Settings['categoryRules'] {
+  const key = groupingKey(description);
+  if (!key) return rules;
+  return { ...rules, [key]: categoryId };
+}
+
 export function withAlias(aliases: Settings['aliases'], description: string, name: string): Settings['aliases'] {
   const key = groupingKey(description);
   if (!key) return aliases;

@@ -1,4 +1,4 @@
-import { categorize, normalize } from '../categorizer';
+import { categorize, groupingKey, normalize } from '../categorizer';
 import type { Transaction } from '../types';
 import { parseCsv } from './csv';
 import { isPdf, parsePdf } from './pdf';
@@ -34,7 +34,12 @@ export interface PreviewRow extends Omit<Transaction, 'id'> {
  * Converte linhas lidas em lançamentos prontos, categorizando automaticamente.
  * `externalId` é estável entre importações do mesmo arquivo, o que permite descartar duplicatas.
  */
-export function toPreviewRows(rows: ParsedRow[], existingExternalIds: Set<string>): PreviewRow[] {
+export function toPreviewRows(
+  rows: ParsedRow[],
+  existingExternalIds: Set<string>,
+  /** Categorias que o usuário já corrigiu antes, para não ter de corrigir de novo. */
+  learned: Record<string, string> = {},
+): PreviewRow[] {
   const seen = new Map<string, number>();
   return rows.map((r) => {
     let externalId: string;
@@ -46,12 +51,13 @@ export function toPreviewRows(rows: ParsedRow[], existingExternalIds: Set<string
       externalId = `h:${hash(base)}:${n}`;
     }
     const type = r.amountCents < 0 ? 'expense' : 'income';
+    const remembered = learned[groupingKey(r.description)];
     return {
       date: r.date,
       description: r.description,
       amountCents: Math.abs(r.amountCents),
       type,
-      categoryId: categorize(r.description, type),
+      categoryId: remembered ?? categorize(r.description, type),
       source: 'import' as const,
       externalId,
       duplicate: existingExternalIds.has(externalId),
