@@ -18,6 +18,18 @@ export function limitFor(cat: Category, baseIncomeCents: number, settings: Setti
   return Math.round((baseIncomeCents * cat.idealPct) / 100);
 }
 
+/** Conta fixa: ou a categoria é de compromisso fixo, ou o usuário marcou o lançamento como recorrente. */
+export function isFixedCost(t: Transaction): boolean {
+  return t.recurring === true || FIXED_COST_CATEGORIES.has(t.categoryId);
+}
+
+/** Total mensal de gastos marcados como recorrentes (o "custo de existir" do mês). */
+export function recurringMonthlyCost(txs: Transaction[], month: string): number {
+  return txs
+    .filter((t) => t.type === 'expense' && t.recurring === true && monthKey(t.date) === month)
+    .reduce((a, t) => a + t.amountCents, 0);
+}
+
 function statusFor(cat: Category, spent: number, limit: number, baseIncome: number): LimitStatus {
   // Sem renda de referência não há como julgar; poupar acima da meta é bom.
   if (baseIncome <= 0 || cat.group === 'poupanca') return 'ok';
@@ -86,16 +98,17 @@ export function computeMonthSummary(
   let projectedExpenseCents: number | null = null;
   const day = now.getDate();
   if (month === currentMonthKey(now) && day >= 5) {
+    const poupanca = new Set(CATEGORIES.filter((c) => c.group === 'poupanca').map((c) => c.id));
     let fixedSoFar = 0;
     let variableSoFar = 0;
-    for (const u of categories) {
-      if (u.category.group === 'poupanca') continue;
-      if (FIXED_COST_CATEGORIES.has(u.category.id)) fixedSoFar += u.spentCents;
-      else variableSoFar += u.spentCents;
+    for (const t of monthTx) {
+      if (t.type !== 'expense' || t.categoryId === 'transferencia' || poupanca.has(t.categoryId)) continue;
+      if (isFixedCost(t)) fixedSoFar += t.amountCents;
+      else variableSoFar += t.amountCents;
     }
     const prevMonth = shiftMonth(month, -1);
     const prevFixed = txs
-      .filter((t) => t.type === 'expense' && monthKey(t.date) === prevMonth && FIXED_COST_CATEGORIES.has(t.categoryId))
+      .filter((t) => t.type === 'expense' && monthKey(t.date) === prevMonth && isFixedCost(t))
       .reduce((a, t) => a + t.amountCents, 0);
     projectedExpenseCents = Math.round(Math.max(fixedSoFar, prevFixed) + (variableSoFar / day) * daysInMonth(month));
   }
@@ -114,6 +127,43 @@ export function computeMonthSummary(
     categories,
     projectedExpenseCents,
   };
+}
+
+export interface DayPoint {
+  day: number;
+  /** Gasto acumulado do dia 1 até este dia, em centavos. */
+  cumulativeCents: number;
+  /** Onde o acumulado estaria se o orçamento fosse gasto por igual ao longo do mês. */
+  paceCents: number;
+}
+
+/**
+ * Ritmo de gasto do mês: acumulado dia a dia contra o ritmo ideal.
+ * Responde de olho "estou gastando rápido demais?". Só vai até hoje no mês corrente.
+ */
+export function dailySpending(
+  txs: Transaction[],
+  month: string,
+  budgetCents: number,
+  now: Date = new Date(),
+): DayPoint[] {
+  const total = daysInMonth(month);
+  const last = month === currentMonthKey(now) ? Math.min(now.getDate(), total) : total;
+  const poupanca = new Set(CATEGORIES.filter((c) => c.group === 'poupanca').map((c) => c.id));
+  const perDay = new Array<number>(total + 1).fill(0);
+  for (const t of txs) {
+    if (t.type !== 'expense' || monthKey(t.date) !== month) continue;
+    if (t.categoryId === 'transferencia' || poupanca.has(t.categoryId)) continue;
+    const d = Number(t.date.slice(8, 10));
+    if (d >= 1 && d <= total) perDay[d] += t.amountCents;
+  }
+  const out: DayPoint[] = [];
+  let acc = 0;
+  for (let d = 1; d <= last; d++) {
+    acc += perDay[d];
+    out.push({ day: d, cumulativeCents: acc, paceCents: Math.round((budgetCents * d) / total) });
+  }
+  return out;
 }
 
 export interface SeriesPoint {

@@ -12,10 +12,14 @@ create table if not exists public.transactions (
   category_id  text not null,
   source       text not null default 'manual' check (source in ('manual', 'import')),
   external_id  text,
+  recurring    boolean not null default false,
   created_at   timestamptz not null default now(),
   -- Evita importar o mesmo lançamento duas vezes (NULL não conflita, então lançamentos manuais não são afetados).
   unique (user_id, external_id)
 );
+
+-- Para quem já criou a tabela antes desta coluna existir:
+alter table public.transactions add column if not exists recurring boolean not null default false;
 
 create index if not exists transactions_user_date_idx on public.transactions (user_id, date desc);
 

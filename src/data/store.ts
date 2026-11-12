@@ -94,9 +94,10 @@ interface TxRow {
   category_id: string;
   source: 'manual' | 'import';
   external_id: string | null;
+  recurring: boolean | null;
 }
 
-const COLS = 'id,date,description,amount_cents,type,category_id,source,external_id';
+const COLS = 'id,date,description,amount_cents,type,category_id,source,external_id,recurring';
 const PAGE = 1000;
 
 const fromRow = (r: TxRow): Transaction => ({
@@ -108,6 +109,7 @@ const fromRow = (r: TxRow): Transaction => ({
   categoryId: r.category_id,
   source: r.source,
   externalId: r.external_id,
+  recurring: r.recurring ?? false,
 });
 
 const toRow = (t: NewTransaction) => ({
@@ -118,6 +120,7 @@ const toRow = (t: NewTransaction) => ({
   category_id: t.categoryId,
   source: t.source,
   external_id: t.externalId ?? null,
+  recurring: t.recurring ?? false,
 });
 
 export class SupabaseStore implements DataStore {

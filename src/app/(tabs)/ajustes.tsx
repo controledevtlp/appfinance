@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Switch, View } from 'react-native';
+import { Appear } from '@/components/motion';
 import { Button, Card, Field, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { confirmDialog, notify } from '@/lib/dialog';
@@ -62,12 +63,15 @@ export default function Ajustes() {
 
   return (
     <Screen>
+      <Appear index={0}>
       <Card>
         <Txt variant="h2">Sua base de cálculo</Txt>
+        <Button title="Detalhar minha renda" icon="cash-outline" variant="ghost" onPress={() => router.push('/renda')} />
         <Field label="Renda líquida mensal (R$)" value={income} onChangeText={setIncome} keyboardType="decimal-pad" placeholder="ex.: 6500,00" hint="O que cai na conta depois dos descontos. Define o ideal de cada categoria." />
         <Field label="Reserva de emergência atual (R$)" value={reserve} onChangeText={setReserve} keyboardType="decimal-pad" placeholder="ex.: 9000,00" hint={`Meta: 6 meses de custos essenciais. Hoje: ${formatBRL(settings.emergencyBalanceCents)}.`} />
         <Button title="Salvar" onPress={saveValues} loading={busy} />
       </Card>
+      </Appear>
 
       <Card>
         <Txt variant="h2">Notificações</Txt>

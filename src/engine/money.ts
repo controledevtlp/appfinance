@@ -9,6 +9,14 @@ export function formatBRL(cents: number, opts: { sign?: boolean } = {}): string 
   return `${sign}R$ ${int},${frac}`;
 }
 
+/** Versão curta para rótulos de gráfico: "R$ 1,2 mil". */
+export function formatBRLShort(cents: number): string {
+  const v = Math.abs(cents) / 100;
+  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1).replace('.', ',')} mi`;
+  if (v >= 1000) return `R$ ${(v / 1000).toFixed(1).replace('.', ',')} mil`;
+  return `R$ ${Math.round(v)}`;
+}
+
 /**
  * Converte texto digitado/importado em centavos.
  * Aceita "1.234,56", "1234,56", "1234.56", "-R$ 12,30", "(12,30)".

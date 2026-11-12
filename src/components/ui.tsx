@@ -79,18 +79,6 @@ export function Chip({ label, selected, onPress, color, icon }: { label: string;
   );
 }
 
-/** Barra de progresso. `ideal` (0..1 da escala) desenha um marcador, ex.: 0.5 na regra 50/30/20. */
-export function Progress({ ratio, color, markerAt, height = 8 }: { ratio: number; color: string; markerAt?: number; height?: number }) {
-  const t = useTheme();
-  const scale = Math.max(1, ratio);
-  return (
-    <View style={{ height, backgroundColor: t.border, borderRadius: height, overflow: 'visible' }}>
-      <View style={{ width: `${Math.min(100, (ratio / scale) * 100)}%`, height, backgroundColor: color, borderRadius: height }} />
-      {markerAt !== undefined ? <View style={{ position: 'absolute', left: `${Math.min(100, (markerAt / scale) * 100)}%`, top: -3, width: 2, height: height + 6, backgroundColor: t.text, opacity: 0.55 }} /> : null}
-    </View>
-  );
-}
-
 export function MonthSwitcher({ month, onChange }: { month: string; onChange: (m: string) => void }) {
   const t = useTheme();
   const btn = (delta: number, icon: string, label: string) => (
@@ -117,6 +105,44 @@ export function Field({ label, hint, ...props }: TextInputProps & { label: strin
         {...props}
         style={[{ borderWidth: 1, borderColor: t.border, backgroundColor: t.bg, color: t.text, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 }, props.style]}
       />
+      {hint ? <Txt variant="small">{hint}</Txt> : null}
+    </View>
+  );
+}
+
+/** Campo de valor em reais, com prefixo e teclado numérico. */
+export function MoneyField({
+  label,
+  value,
+  onChangeText,
+  hint,
+  autoFocus,
+  big,
+}: {
+  label?: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  hint?: string;
+  autoFocus?: boolean;
+  big?: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <View style={{ gap: 6 }}>
+      {label ? <Txt variant="muted">{label}</Txt> : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: t.border, backgroundColor: t.bg, borderRadius: radius.md, paddingHorizontal: 14 }}>
+        <Text style={{ color: t.muted, fontSize: big ? 22 : 16, fontWeight: '600', marginRight: 6 }}>R$</Text>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType="decimal-pad"
+          inputMode="decimal"
+          placeholder="0,00"
+          placeholderTextColor={t.muted}
+          autoFocus={autoFocus}
+          style={{ flex: 1, color: t.text, fontSize: big ? 26 : 16, fontWeight: big ? '800' : '400', paddingVertical: big ? 12 : 12 }}
+        />
+      </View>
       {hint ? <Txt variant="small">{hint}</Txt> : null}
     </View>
   );

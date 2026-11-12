@@ -7,11 +7,12 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 
 | Tela | O que faz |
 |---|---|
-| **Painel** | Quanto sobrou no mês, nota de saúde financeira (0–100, explicada), regra 50/30/20, para onde vai o dinheiro, últimos 6 meses, reserva de emergência e principais dicas |
+| **Painel** | Quanto sobrou no mês, **ritmo de gasto do mês** (acumulado × ritmo ideal), nota de saúde financeira (0–100, explicada), regra 50/30/20, para onde vai o dinheiro, últimos 6 meses, gastos constantes, reserva de emergência e principais dicas |
 | **Lançamentos** | Lista por dia com busca e filtro; adicionar/editar/excluir; categoria sugerida automaticamente pela descrição |
 | **Orçamento** | Limite ideal por categoria (calculado sobre a sua renda), barras de uso, limites personalizáveis |
 | **Dicas** | Alertas ordenados por gravidade, cada um com **plano de melhoria em etapas** e economia mensal estimada |
-| **Importar extrato** | CSV (vários bancos, fatura de cartão) e OFX, com prévia, correção de categoria e descarte de duplicados |
+| **Importar extrato** | CSV (vários bancos, fatura de cartão) e OFX, com prévia, correção de categoria, descarte de duplicados e **mapeamento de gastos constantes** |
+| **Minha renda** | Informe quanto recebe sem precisar de extrato: várias fontes (salário, freela, aluguel…), total ao vivo e prévia do 50/30/20 enquanto digita |
 | **Ajustes** | Renda líquida, reserva atual, notificações, dados de exemplo, conta |
 
 ### Como os cálculos funcionam (`src/engine`)
@@ -26,7 +27,7 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 - Excessos menores que R$ 20 não geram dica.
 - A soma "você libera até X/mês" não conta duas vezes: juros que já estão numa categoria estourada entram uma vez só.
 
-Todo o motor é TypeScript puro e testado: `npm test` (38 testes).
+Todo o motor é TypeScript puro e testado: `npm test` (46 testes).
 
 ## Rodar no computador
 
@@ -71,6 +72,12 @@ Sem a conta, dá para usar o app no iPhone pelo **Expo Go**.
 ## Notificações
 São **locais** (agendadas no próprio aparelho, sem servidor): alerta quando uma categoria chega a 80% e quando estoura o limite, resumo semanal (domingo 19h) e lembrete diário opcional (20h30). A permissão é pedida na primeira vez. Funcionam tanto no APK quanto no Expo Go — o Expo Go só não suporta notificações *push* (remotas), que este app não usa.
 
+## Gastos constantes
+Ao ler o extrato, o app agrupa os lançamentos por descrição (ignorando números, então "Parcela 3/10" e "Parcela 4/10" são o mesmo compromisso) e já marca os que parecem fixos: os que repetem em 2+ meses com valor praticamente igual, ou os de categoria tipicamente fixa (moradia, contas, assinaturas, dívidas, educação). Um delivery que repete com valores diferentes **não** é marcado. Você confirma ou desmarca cada um, e o total aparece na hora comparado com 50% da sua renda. O que é marcado entra na projeção do mês como conta que vence uma vez só.
+
+## Gráficos e animações
+Gráficos em SVG puro (`react-native-svg`), sem biblioteca de charts — são poucos elementos e o desenho é barato. As animações usam **Reanimated**, que roda na thread de UI: a rolagem não engasga enquanto o orçamento é recalculado, e nada anima quadro a quadro em JavaScript. As primitivas ficam em `src/components/motion.tsx` (entrada escalonada dos cartões, toque com resposta tátil, barras que crescem até o valor). Listas longas não recebem animação por item, de propósito. O Reanimated respeita "reduzir movimento" do sistema.
+
 ## Importar extrato
 No app/internet banking, exporte o extrato em **CSV ou OFX** (ou a fatura do cartão) e escolha o arquivo em *Importar extrato*.
 - Detecta separador (`;`/`,`), cabeçalho (mesmo com linhas de preâmbulo), valores `1.234,56`, colunas separadas de débito/crédito e acentos em Latin-1.
@@ -83,7 +90,7 @@ No app/internet banking, exporte o extrato em **CSV ou OFX** (ou a fatura do car
 src/engine/     cálculos, dicas, categorizador, importadores (puro TS + testes)
 src/data/       contexto do app, armazenamento local e Supabase
 src/app/        telas (Expo Router)
-src/components/ UI e gráficos (react-native-svg)
+src/components/ UI, gráficos (react-native-svg) e animações (motion.tsx)
 src/notifications/
 supabase/schema.sql
 ```

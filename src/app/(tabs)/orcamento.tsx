@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
-import { Button, Card, CategoryBadge, Field, MonthSwitcher, Progress, Screen, Txt } from '@/components/ui';
+import { Appear, Bar, Press } from '@/components/motion';
+import { Button, Card, CategoryBadge, Field, MonthSwitcher, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { GROUP_LABEL } from '@/engine/categories';
 import { formatBRL, parseMoneyToCents } from '@/engine/money';
@@ -32,26 +33,29 @@ export default function Orcamento() {
     <Screen>
       <MonthSwitcher month={month} onChange={setMonth} />
 
+      <Appear index={0}>
       <Card>
         <Txt variant="muted">Renda usada nos cálculos</Txt>
         <Txt variant="title">{formatBRL(summary.baseIncomeCents)}</Txt>
         <Txt variant="small">
           {settings.monthlyIncomeCents > 0 ? 'Renda líquida mensal informada em Ajustes.' : 'Usando as receitas lançadas no mês. Informe sua renda fixa em Ajustes para ter limites estáveis.'}
         </Txt>
-        <Button title="Alterar renda" variant="ghost" onPress={() => router.push('/ajustes')} />
+        <Button title="Alterar renda" icon="cash-outline" variant="ghost" onPress={() => router.push('/renda')} />
       </Card>
+      </Appear>
 
-      {GROUPS.map((g) => {
+      {GROUPS.map((g, gi) => {
         const group = summary.groups.find((x) => x.group === g)!;
         const cats = summary.categories.filter((c) => c.category.group === g);
         return (
-          <Card key={g}>
+          <Appear key={g} index={gi + 1}>
+          <Card>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Txt variant="h2">{GROUP_LABEL[g]} · {group.idealPct}%</Txt>
               <Txt variant="muted">{formatBRL(group.spentCents)} / {formatBRL(group.idealCents)}</Txt>
             </View>
-            {cats.map((u) => (
-              <Pressable key={u.category.id} onPress={() => open(u)} accessibilityRole="button" accessibilityLabel={`Editar limite de ${u.category.name}`} style={{ gap: 6 }}>
+            {cats.map((u, i) => (
+              <Press key={u.category.id} onPress={() => open(u)} accessibilityRole="button" accessibilityLabel={`Editar limite de ${u.category.name}`} style={{ gap: 6 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <CategoryBadge categoryId={u.category.id} size={32} />
                   <View style={{ flex: 1 }}>
@@ -63,20 +67,23 @@ export default function Orcamento() {
                   </View>
                   <Txt variant="muted" color={statusColor(u)} style={{ fontWeight: '700' }}>{u.limitCents > 0 || u.spentCents > 0 ? `${Math.round(u.ratio * 100)}%` : '—'}</Txt>
                 </View>
-                <Progress ratio={u.ratio} color={statusColor(u)} markerAt={1} height={6} />
-              </Pressable>
+                <Bar ratio={u.ratio} color={statusColor(u)} markerAt={1} height={6} delay={gi * 60 + i * 40} />
+              </Press>
             ))}
           </Card>
+          </Appear>
         );
       })}
 
+      <Appear index={5}>
       <Card>
         <Txt variant="h2">Reserva de emergência</Txt>
         <Txt variant="muted">Custos essenciais: {formatBRL(emergency.essentialCents)}/mês (média dos últimos meses). Meta de 6 meses: {formatBRL(emergency.targetCents)}.</Txt>
-        <Progress ratio={emergency.progress} color={t.poupanca} />
+        <Bar ratio={emergency.progress} color={t.poupanca} height={10} />
         <Txt variant="small">Você tem {formatBRL(emergency.balanceCents)} ({emergency.monthsCovered.toFixed(1).replace('.', ',')} meses). Guardando {formatBRL(emergency.suggestedMonthlyCents)} por mês, a meta sai em 12 meses.</Txt>
         <Button title="Atualizar valor guardado" variant="ghost" onPress={() => router.push('/ajustes')} />
       </Card>
+      </Appear>
 
       <Modal visible={!!editing} transparent animationType="fade" onRequestClose={() => setEditing(null)}>
         <Pressable style={{ flex: 1, backgroundColor: '#0008', justifyContent: 'center', padding: 24 }} onPress={() => setEditing(null)}>

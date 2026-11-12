@@ -5,6 +5,7 @@ import { parseOfx } from './ofx';
 import type { ParseOptions, ParseResult, ParsedRow } from './types';
 
 export type { ParseOptions, ParseResult, ParsedRow } from './types';
+export { groupRecurringCandidates, type RecurringGroup } from './recurring';
 
 export function parseStatement(text: string, opts: ParseOptions = {}): ParseResult {
   const isOfx = /<OFX>|OFXHEADER|<STMTTRN>/i.test(text);

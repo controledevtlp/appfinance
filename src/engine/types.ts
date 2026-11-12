@@ -24,6 +24,15 @@ export interface Transaction {
   source: 'manual' | 'import';
   /** Identificador do banco (FITID) ou hash, para evitar duplicar importações. */
   externalId?: string | null;
+  /** Gasto que se repete todo mês (aluguel, assinatura, parcela). Marcado na importação. */
+  recurring?: boolean;
+}
+
+/** Uma fonte de renda informada à mão, na tela Minha renda. */
+export interface IncomeSource {
+  id: string;
+  label: string;
+  cents: number;
 }
 
 export interface NotificationPrefs {
@@ -35,6 +44,8 @@ export interface NotificationPrefs {
 export interface Settings {
   /** Renda líquida mensal declarada, em centavos. 0 = usar a renda lançada no mês. */
   monthlyIncomeCents: number;
+  /** Detalhamento de onde vem a renda (só informativo: a soma vai em monthlyIncomeCents). */
+  incomeSources: IncomeSource[];
   /** Quanto já existe guardado como reserva de emergência, em centavos. */
   emergencyBalanceCents: number;
   /** Limites personalizados por categoria (centavos/mês). */
@@ -44,6 +55,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   monthlyIncomeCents: 0,
+  incomeSources: [],
   emergencyBalanceCents: 0,
   budgetOverrides: {},
   notifications: { weeklySummary: true, budgetAlerts: true, dailyReminder: false },

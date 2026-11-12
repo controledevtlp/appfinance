@@ -1,6 +1,15 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { computeMonthSummary, emergencyStatus, monthlySeries, type EmergencyStatus, type SeriesPoint } from '@/engine/budget';
+import {
+  computeMonthSummary,
+  dailySpending,
+  emergencyStatus,
+  monthlySeries,
+  recurringMonthlyCost,
+  type DayPoint,
+  type EmergencyStatus,
+  type SeriesPoint,
+} from '@/engine/budget';
 import { currentMonthKey } from '@/engine/dates';
 import { buildDemoTransactions, DEMO_SETTINGS } from '@/engine/demo';
 import { healthScore, type HealthScore } from '@/engine/health';
@@ -25,6 +34,12 @@ interface AppState {
   emergency: EmergencyStatus;
   health: HealthScore | null;
   series: SeriesPoint[];
+  /** Gasto acumulado dia a dia do mês escolhido, contra o ritmo ideal. */
+  pace: DayPoint[];
+  /** Teto de gasto do mês: 80% da renda (necessidades + desejos). */
+  budgetCents: number;
+  /** Soma dos lançamentos marcados como "gasto constante" no mês. */
+  recurringCents: number;
   addTransactions: (items: NewTransaction[]) => Promise<Transaction[]>;
   updateTransaction: (tx: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
@@ -102,6 +117,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const emergency = useMemo(() => emergencyStatus(transactions, month, settings), [transactions, month, settings]);
   const health = useMemo(() => healthScore(summary, emergency), [summary, emergency]);
   const series = useMemo(() => monthlySeries(transactions, month, 6), [transactions, month]);
+  const budgetCents = useMemo(() => Math.round(summary.baseIncomeCents * 0.8), [summary.baseIncomeCents]);
+  const pace = useMemo(() => dailySpending(transactions, month, budgetCents), [transactions, month, budgetCents]);
+  const recurringCents = useMemo(() => recurringMonthlyCost(transactions, month), [transactions, month]);
 
   // Notificações: lembretes recorrentes e alertas de orçamento do mês corrente.
   useEffect(() => {
@@ -174,6 +192,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     emergency,
     health,
     series,
+    pace,
+    budgetCents,
+    recurringCents,
     addTransactions,
     updateTransaction,
     removeTransaction,

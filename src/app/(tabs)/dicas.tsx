@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { Appear, Morph, Press, Reveal } from '@/components/motion';
 import { Card, Empty, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { formatBRL } from '@/engine/money';
@@ -25,17 +26,21 @@ export default function Dicas() {
       ) : (
         <>
           {total > 0 ? (
+            <Appear index={0}>
             <Card style={{ backgroundColor: t.primary, borderColor: t.primary }}>
               <Txt variant="muted" color={t.primaryText}>Seguindo os planos abaixo você libera até</Txt>
               <Txt variant="big" color={t.primaryText}>{formatBRL(total)}/mês</Txt>
               <Txt variant="small" color={t.primaryText}>{formatBRL(total * 12)} por ano para a reserva e seus objetivos.</Txt>
             </Card>
+            </Appear>
           ) : null}
 
-          {tips.map((tip: Tip) => {
+          {tips.map((tip: Tip, idx: number) => {
             const expanded = open === tip.id;
             return (
-              <Pressable key={tip.id} onPress={() => setOpen(expanded ? null : tip.id)} accessibilityRole="button" aria-expanded={expanded}>
+              <Appear key={tip.id} index={idx + 1}>
+              <Press onPress={() => setOpen(expanded ? null : tip.id)} accessibilityRole="button" aria-expanded={expanded}>
+                <Morph>
                 <Card style={{ borderLeftWidth: 4, borderLeftColor: color[tip.severity] }}>
                   <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
                     <Icon name={icon[tip.severity]} color={color[tip.severity]} />
@@ -47,6 +52,7 @@ export default function Dicas() {
                     <Icon name={expanded ? 'chevron-up' : 'chevron-down'} color={t.muted} size={18} />
                   </View>
                   {expanded ? (
+                    <Reveal>
                     <View style={{ gap: 8, paddingTop: 4 }}>
                       <Txt variant="small" style={{ fontWeight: '700' }}>PLANO DE MELHORIA</Txt>
                       {tip.steps.map((s, i) => (
@@ -56,9 +62,12 @@ export default function Dicas() {
                         </View>
                       ))}
                     </View>
+                    </Reveal>
                   ) : null}
                 </Card>
-              </Pressable>
+                </Morph>
+              </Press>
+              </Appear>
             );
           })}
           {tips.length === 0 ? <Txt variant="muted">Sem alertas neste mês. Continue assim!</Txt> : null}

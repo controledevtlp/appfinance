@@ -50,6 +50,8 @@ const CREDIT_HDR = /^(credito|entrada|credit|valor credito)/;
 const DESC_HDR = /(descricao|historico|lancamento|description|title|titulo|estabelecimento|memo|detalhe|favorecido|nome)/;
 const ID_HDR = /^(identificador|id|fitid|codigo|documento)$/;
 const IGNORE_DESC = /^saldo (anterior|do dia|final|parcial|inicial)|^total\b/;
+/** Palavras que só dizem o tipo do lançamento e poluem a descrição. */
+const GENERIC_DESC = /^(d[eé]bito|cr[eé]dito|compra|compra no d[eé]bito|compra com cart[aã]o|compra cart[aã]o|lan[cç]amento|movimenta[cç][aã]o|hist[oó]rico)$/i;
 
 interface Columns {
   date: number;
@@ -144,10 +146,10 @@ export function parseCsv(text: string, options: ParseOptions = {}): ParseResult 
       const c = parseMoneyToCents(r[cols.credit] ?? '') ?? 0;
       cents = c !== 0 || d !== 0 ? Math.abs(c) - Math.abs(d) : null;
     }
-    const description = cols.desc
-      .map((i) => r[i] ?? '')
-      .filter((v, idx, arr) => v && arr.indexOf(v) === idx)
-      .join(' - ');
+    const parts = cols.desc.map((i) => (r[i] ?? '').trim()).filter((v, idx, arr) => v && arr.indexOf(v) === idx);
+    // "Débito" sozinho não diz nada; só vale a pena quando é a única informação da linha.
+    const useful = parts.filter((v) => !GENERIC_DESC.test(v));
+    const description = (useful.length ? useful : parts).join(' - ');
     if (!date || cents === null || cents === 0) {
       // Linhas de saldo/total sem data não contam como erro.
       if (r.some((c) => c) && !IGNORE_DESC.test(normalize(description))) skipped++;

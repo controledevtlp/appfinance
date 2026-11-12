@@ -9,6 +9,19 @@ export function normalize(s: string): string {
     .trim();
 }
 
+/**
+ * Chave para agrupar lançamentos que são "a mesma coisa" em meses diferentes.
+ * Descarta pontuação e números, então "PARCELA 3/10" e "PARCELA 4/10" caem no
+ * mesmo grupo, assim como "NETFLIX.COM  *123" e "NETFLIX COM".
+ */
+export function groupingKey(s: string): string {
+  return normalize(s)
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\d+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** Ordem importa: a primeira regra que casar vence. Textos já sem acento e em minúsculas. */
 const RULES: { categoryId: string; re: RegExp; only?: TxType }[] = [
   { categoryId: 'transferencia', re: /pagamento (de )?fatura|pgto fatura|pag fatura|pagamento recebido|saldo anterior|pagamento on ?line|fatura (cartao|paga)/ },
@@ -29,6 +42,8 @@ const RULES: { categoryId: string; re: RegExp; only?: TxType }[] = [
   { categoryId: 'lazer', re: /cinema|ingresso|teatro|\bshow\b|sympla|eventim|ticketmaster|hotel|airbnb|booking|decolar|latam|gol linhas|azul linhas|passagem aerea|viagem|parque|steam|playstation|xbox|nintendo|clube/ },
   { categoryId: 'compras', re: /amazon|mercado ?livre|shopee|aliexpress|shein|magalu|magazine luiza|americanas|casas bahia|ponto frio|fast shop|kabum|renner|\bc&a\b|riachuelo|zara|marisa|centauro|netshoes|decathlon|leroy|tok&stok|ikea|kalunga|havan|submarino|shoptime|loja|dafiti|nike|adidas/ },
   { categoryId: 'outros', re: /tarifa|anuidade|cesta de servi|taxa de manuten/ },
+  // Depois dos lojistas: "NOTEBOOK PARCELA 3/10" vira dívida, mas "MAGAZINE LUIZA PARC 2/3" fica em compras.
+  { categoryId: 'dividas', re: /\bparcela\b|\bparc\b|\bprestacao\b|\bparcelado\b/, only: 'expense' },
 ];
 
 export function categorize(description: string, type: TxType): string {

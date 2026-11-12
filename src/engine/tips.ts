@@ -1,6 +1,7 @@
 import { computeMonthSummary, emergencyStatus } from './budget';
 import { FIXED_COST_CATEGORIES } from './categories';
 import { currentMonthKey, monthKey, shiftMonth } from './dates';
+import { groupingKey } from './categorizer';
 import { formatBRL } from './money';
 import type { MonthSummary, Settings, Tip, TipSeverity, Transaction } from './types';
 
@@ -63,16 +64,6 @@ const FEES_RE = /juros|iof|encargo|multa|\bmora\b|tarifa|anuidade|cesta de servi
 
 const SEVERITY_ORDER: Record<TipSeverity, number> = { alerta: 0, atencao: 1, info: 2, positivo: 3 };
 
-function norm(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9 ]/g, ' ')
-    .replace(/\d+/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 export interface Subscription {
   /** Nome como aparece no extrato (o do lançamento mais recente). */
@@ -89,7 +80,7 @@ export function detectSubscriptions(txs: Transaction[], endMonth: string): Subsc
     if (t.type !== 'expense' || t.categoryId !== 'assinaturas') continue;
     const m = monthKey(t.date);
     if (!months.includes(m)) continue;
-    const key = norm(t.description) || 'assinatura';
+    const key = groupingKey(t.description) || 'assinatura';
     const entry = byName.get(key) ?? { label: t.description, lastDate: t.date, perMonth: new Map<string, number>() };
     if (t.date >= entry.lastDate) {
       entry.label = t.description;

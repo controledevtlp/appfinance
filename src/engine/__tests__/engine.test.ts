@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { computeMonthSummary, emergencyStatus, essentialMonthlyCost, monthlySeries } from '../budget';
+import { computeMonthSummary, dailySpending, emergencyStatus, essentialMonthlyCost, monthlySeries, recurringMonthlyCost } from '../budget';
 import { categorize } from '../categorizer';
 import { shiftMonth, parseDateToISO } from '../dates';
 import { buildDemoTransactions, DEMO_SETTINGS } from '../demo';
 import { healthScore } from '../health';
-import { decodeBytes, parseStatement, toPreviewRows } from '../import';
+import { decodeBytes, groupRecurringCandidates, parseStatement, toPreviewRows } from '../import';
 import { formatBRL, parseMoneyToCents } from '../money';
 import { detectSubscriptions, generateTips } from '../tips';
 import { DEFAULT_SETTINGS, type Settings, type Transaction } from '../types';
@@ -349,5 +349,95 @@ describe('projeção e comparação mês a mês', () => {
     const t = generateTips(txs, '2026-11', settings, NOW).find((x) => x.id === 'growth:mercado')!;
     expect(t.savingsCents).toBe(30000);
     expect(t.message).toContain('mesmo período');
+  });
+});
+
+describe('gastos constantes e ritmo do mês', () => {
+  it('agrupa candidatos a gasto constante e pré-marca o que repete', () => {
+    const rows = [
+      { date: '2026-09-10', description: 'ALUGUEL IMOBILIARIA', amountCents: 150000, type: 'expense' as const, categoryId: 'moradia' },
+      { date: '2026-10-10', description: 'ALUGUEL IMOBILIARIA', amountCents: 150000, type: 'expense' as const, categoryId: 'moradia' },
+      { date: '2026-10-03', description: 'IFOOD *PEDIDO', amountCents: 5490, type: 'expense' as const, categoryId: 'delivery' },
+      { date: '2026-10-06', description: 'Pagamento de fatura', amountCents: 120000, type: 'expense' as const, categoryId: 'transferencia' },
+      { date: '2026-10-07', description: 'NETFLIX.COM', amountCents: 5590, type: 'expense' as const, categoryId: 'assinaturas' },
+    ];
+    const groups = groupRecurringCandidates(rows);
+    const by = (k: string) => groups.find((g) => g.key.includes(k))!;
+    expect(groups.map((g) => g.suggested)).toEqual([true, true, false]); // transferência fica de fora
+    expect(by('aluguel')).toMatchObject({ months: 2, monthlyCents: 150000, indexes: [0, 1] });
+    expect(by('netflix').suggested).toBe(true); // 1 mês só, mas categoria tipicamente fixa
+    expect(by('ifood').suggested).toBe(false);
+  });
+
+  it('junta as parcelas de um mesmo compromisso e soma repetições do mês', () => {
+    const rows = [
+      { date: '2026-09-20', description: 'NOTEBOOK PARCELA 3/10', amountCents: 34000, type: 'expense' as const, categoryId: 'dividas' },
+      { date: '2026-10-20', description: 'NOTEBOOK PARCELA 4/10', amountCents: 34000, type: 'expense' as const, categoryId: 'dividas' },
+      { date: '2026-10-05', description: 'Uber', amountCents: 2000, type: 'expense' as const, categoryId: 'transporte' },
+      { date: '2026-10-09', description: 'Uber', amountCents: 3000, type: 'expense' as const, categoryId: 'transporte' },
+    ];
+    const groups = groupRecurringCandidates(rows);
+    const parcela = groups.find((g) => g.key.includes('notebook'))!;
+    expect(parcela).toMatchObject({ months: 2, monthlyCents: 34000, suggested: true });
+    expect(parcela.label).toBe('NOTEBOOK PARCELA 4/10'); // o mais recente
+    const uber = groups.find((g) => g.key === 'uber')!;
+    expect(uber.monthlyCents).toBe(5000); // somou os dois do mesmo mês
+    expect(uber.months).toBe(1);
+  });
+
+  it('calcula o acumulado diário contra o ritmo ideal', () => {
+    const txs = [
+      tx('2026-11-01', 'Mercado', 100, 'mercado'),
+      tx('2026-11-03', 'iFood', 50, 'delivery'),
+      tx('2026-11-03', 'Aplicação', 500, 'investimentos'), // aporte não é gasto
+      tx('2026-11-05', 'Salário', 5000, 'salario', 'income'),
+    ];
+    const pts = dailySpending(txs, '2026-11', 300000, NOW); // orçamento 3000, novembro tem 30 dias
+    expect(pts).toHaveLength(20); // vai só até hoje (dia 20)
+    expect(pts[0]).toEqual({ day: 1, cumulativeCents: 10000, paceCents: 10000 });
+    expect(pts[2].cumulativeCents).toBe(15000);
+    expect(pts[19]).toMatchObject({ day: 20, cumulativeCents: 15000, paceCents: 200000 });
+  });
+
+  it('trata lançamento marcado como recorrente igual a conta fixa na projeção', () => {
+    const base = [
+      tx('2026-10-05', 'Salário', 5000, 'salario', 'income'),
+      { ...tx('2026-10-08', 'Seguro do carro', 300, 'transporte'), recurring: true },
+      tx('2026-11-05', 'Salário', 5000, 'salario', 'income'),
+      tx('2026-11-02', 'Mercado', 200, 'mercado'),
+    ];
+    // Seguro (recorrente, ainda não lançado em novembro) é antecipado uma vez;
+    // mercado (R$ 200 até o dia 20) segue o ritmo: 20000/20*30 = 30000.
+    expect(computeMonthSummary(base, '2026-11', settings, NOW).projectedExpenseCents).toBe(30000 + 30000);
+    expect(recurringMonthlyCost(base, '2026-10')).toBe(30000);
+  });
+});
+
+describe('ajustes de leitura do extrato', () => {
+  it('descarta o "Débito/Crédito" genérico da descrição', () => {
+    const csv = 'Data;Histórico;Descrição;Valor\n10/10/2026;Débito;ALUGUEL IMOBILIARIA;-1.650,00\n05/10/2026;Crédito;SALARIO;6.500,00\n';
+    expect(parseStatement(csv).rows.map((r) => r.description)).toEqual(['ALUGUEL IMOBILIARIA', 'SALARIO']);
+  });
+
+  it('mantém o histórico quando ele é a única informação', () => {
+    const csv = 'Data;Histórico;Valor\n10/10/2026;Pix enviado;-50,00\n';
+    expect(parseStatement(csv).rows[0].description).toBe('Pix enviado');
+  });
+
+  it('não sugere gasto variável como constante, mesmo repetindo', () => {
+    const rows = [
+      { date: '2026-10-03', description: 'IFOOD *PEDIDO', amountCents: 5490, type: 'expense' as const, categoryId: 'delivery' },
+      { date: '2026-11-09', description: 'IFOOD *PEDIDO', amountCents: 6140, type: 'expense' as const, categoryId: 'delivery' },
+      { date: '2026-10-10', description: 'ALUGUEL', amountCents: 165000, type: 'expense' as const, categoryId: 'moradia' },
+      { date: '2026-11-10', description: 'ALUGUEL', amountCents: 165000, type: 'expense' as const, categoryId: 'moradia' },
+    ];
+    const g = groupRecurringCandidates(rows);
+    expect(g.find((x) => x.key.includes('ifood'))!.suggested).toBe(false);
+    expect(g.find((x) => x.key.includes('aluguel'))!.suggested).toBe(true);
+  });
+
+  it('classifica parcelamento sem lojista como dívida', () => {
+    expect(categorize('NOTEBOOK PARCELA 3/10', 'expense')).toBe('dividas');
+    expect(categorize('MAGAZINE LUIZA PARC 2/3', 'expense')).toBe('compras');
   });
 });

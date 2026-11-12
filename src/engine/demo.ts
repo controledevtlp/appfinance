@@ -14,6 +14,7 @@ function mulberry32(seed: number) {
 
 export const DEMO_SETTINGS: Settings = {
   monthlyIncomeCents: 650000,
+  incomeSources: [{ id: 'demo-salario', label: 'Salário', cents: 650000 }],
   emergencyBalanceCents: 900000,
   budgetOverrides: {},
   notifications: { weeklySummary: true, budgetAlerts: true, dailyReminder: false },
@@ -26,10 +27,18 @@ export function buildDemoTransactions(now: Date = new Date()): Omit<Transaction,
   const cur = currentMonthKey(now);
   const today = now.getDate();
 
-  const add = (month: string, day: number, description: string, reais: number, type: 'income' | 'expense', categoryId: string) => {
+  const add = (
+    month: string,
+    day: number,
+    description: string,
+    reais: number,
+    type: 'income' | 'expense',
+    categoryId: string,
+    recurring = false,
+  ) => {
     if (month === cur && day > today) return;
     const date = `${month}-${String(Math.min(day, 28)).padStart(2, '0')}`;
-    out.push({ date, description, amountCents: Math.round(reais * 100), type, categoryId, source: 'manual', externalId: null });
+    out.push({ date, description, amountCents: Math.round(reais * 100), type, categoryId, source: 'manual', externalId: null, recurring });
   };
   const between = (lo: number, hi: number) => lo + rand() * (hi - lo);
 
@@ -38,20 +47,20 @@ export function buildDemoTransactions(now: Date = new Date()): Omit<Transaction,
     add(m, 5, 'Salário', 6500, 'income', 'salario');
     if (i === 2) add(m, 18, 'Freela design', 800, 'income', 'renda_extra');
 
-    add(m, 10, 'Aluguel', 1650, 'expense', 'moradia');
-    add(m, 10, 'Condomínio', 360, 'expense', 'moradia');
+    add(m, 10, 'Aluguel', 1650, 'expense', 'moradia', true);
+    add(m, 10, 'Condomínio', 360, 'expense', 'moradia', true);
     add(m, 12, 'Conta de luz Enel', between(150, 210), 'expense', 'contas');
-    add(m, 15, 'Internet fibra', 119.9, 'expense', 'contas');
-    add(m, 15, 'Celular Vivo', 59.9, 'expense', 'contas');
+    add(m, 15, 'Internet fibra', 119.9, 'expense', 'contas', true);
+    add(m, 15, 'Celular Vivo', 59.9, 'expense', 'contas', true);
 
     [3, 10, 17, 24].forEach((d) => add(m, d, 'Supermercado Carrefour', between(210, 320), 'expense', 'mercado'));
     [6, 13, 20, 27].forEach((d) => add(m, d, 'Posto Shell combustível', between(120, 170), 'expense', 'transporte'));
     add(m, 8, 'Uber', between(25, 60), 'expense', 'transporte');
     add(m, 22, 'Uber', between(25, 60), 'expense', 'transporte');
     add(m, 9, 'Drogasil', between(60, 110), 'expense', 'saude');
-    add(m, 5, 'Smart Fit academia', 109.9, 'expense', 'saude');
+    add(m, 5, 'Smart Fit academia', 109.9, 'expense', 'saude', true);
     add(m, 14, 'Curso Alura', 89, 'expense', 'educacao');
-    add(m, 20, 'Parcela notebook', 340, 'expense', 'dividas');
+    add(m, 20, 'Parcela notebook', 340, 'expense', 'dividas', true);
 
     const deliveryCount = 8 + Math.floor(rand() * 3);
     for (let k = 0; k < deliveryCount; k++) add(m, 2 + k * 3, k % 3 === 0 ? 'iFood' : k % 3 === 1 ? 'Restaurante Madero' : 'Rappi', between(52, 82), 'expense', 'delivery');
@@ -62,11 +71,11 @@ export function buildDemoTransactions(now: Date = new Date()): Omit<Transaction,
     add(m, 25, 'Amazon compra', between(150, 340), 'expense', 'compras');
     add(m, 11, 'Salão beleza', between(70, 120), 'expense', 'cuidados');
 
-    add(m, 7, 'Netflix', 55.9, 'expense', 'assinaturas');
-    add(m, 7, 'Spotify', 21.9, 'expense', 'assinaturas');
-    add(m, 9, 'Amazon Prime', 19.9, 'expense', 'assinaturas');
-    add(m, 12, 'HBO Max', 34.9, 'expense', 'assinaturas');
-    add(m, 13, 'Disney+', 43.9, 'expense', 'assinaturas');
+    add(m, 7, 'Netflix', 55.9, 'expense', 'assinaturas', true);
+    add(m, 7, 'Spotify', 21.9, 'expense', 'assinaturas', true);
+    add(m, 9, 'Amazon Prime', 19.9, 'expense', 'assinaturas', true);
+    add(m, 12, 'HBO Max', 34.9, 'expense', 'assinaturas', true);
+    add(m, 13, 'Disney+', 43.9, 'expense', 'assinaturas', true);
 
     add(m, 6, 'Aplicação CDB', 300, 'expense', 'investimentos');
     add(m, 26, 'Anuidade cartão', 39.9, 'expense', 'outros');
