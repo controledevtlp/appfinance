@@ -54,6 +54,12 @@ export interface Settings {
    * aluguel nem investir), mas aumenta o teto de mercado e alimentação fora.
    */
   mealBenefitCents: number;
+  /**
+   * Taxa de referência (CDI/Selic) em % ao ano, usada no simulador.
+   * Fica guardada porque muda com o tempo: cravar no código envelheceria
+   * mentindo, e pedir toda vez seria chato.
+   */
+  cdiAnnualPct: number;
   /** Apelidos dados a gastos, pela chave de agrupamento da descrição. */
   aliases: Record<string, string>;
   /**
@@ -72,6 +78,7 @@ export const DEFAULT_SETTINGS: Settings = {
   monthlyIncomeCents: 0,
   incomeSources: [],
   mealBenefitCents: 0,
+  cdiAnnualPct: 10.5,
   aliases: {},
   categoryRules: {},
   emergencyBalanceCents: 0,

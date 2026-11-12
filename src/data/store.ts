@@ -19,6 +19,7 @@ function mergeSettings(raw: Partial<Settings> | null | undefined): Settings {
     ...DEFAULT_SETTINGS,
     ...(raw ?? {}),
     budgetOverrides: { ...(raw?.budgetOverrides ?? {}) },
+    cdiAnnualPct: raw?.cdiAnnualPct ?? DEFAULT_SETTINGS.cdiAnnualPct,
     aliases: { ...(raw?.aliases ?? {}) },
     categoryRules: { ...(raw?.categoryRules ?? {}) },
     incomeSources: raw?.incomeSources ?? [],

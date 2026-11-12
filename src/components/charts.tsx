@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import type { DayPoint, SeriesPoint } from '@/engine/budget';
 import { monthLabel } from '@/engine/dates';
 import { formatBRLShort } from '@/engine/money';
@@ -237,4 +237,87 @@ export function MonthlyBars({ data, height = 190 }: { data: SeriesPoint[]; heigh
 function GrowBar({ x, baseY, w, h, fill, grow }: { x: number; baseY: number; w: number; h: number; fill: string; grow: { value: number } }) {
   const props = useAnimatedProps(() => ({ y: baseY - h * grow.value, height: Math.max(0.01, h * grow.value) }));
   return <ARect x={x} width={w} rx={5} fill={fill} animatedProps={props} />;
+}
+
+/**
+ * Evolução de um investimento: a área de baixo é o que você colocou do
+ * bolso, a de cima é o que os juros renderam. O que faz a pessoa entender
+ * juros compostos é justamente ver a faixa de cima abrindo com o tempo.
+ */
+export function GrowthChart({
+  points,
+  height = 190,
+}: {
+  points: { month: number; investedCents: number; balanceCents: number }[];
+  height?: number;
+}) {
+  const t = useTheme();
+  const [width, setWidth] = useState(0);
+  const draw = useSharedValue(0);
+  const last = points[points.length - 1];
+  const max = Math.max(1, last?.balanceCents ?? 1) * 1.08;
+  const months = Math.max(1, last?.month ?? 1);
+
+  useEffect(() => {
+    draw.value = 0;
+    draw.value = withTiming(1, { duration: 950, easing: EASE });
+  }, [points.length, max, draw]);
+
+  const padX = 8;
+  const padTop = 14;
+  const axis = 22;
+  const plotH = height - axis - padTop;
+  const x = (m: number) => padX + (m / months) * (width - padX * 2);
+  const y = (c: number) => padTop + plotH - (c / max) * plotH;
+
+  const line = (key: 'balanceCents' | 'investedCents') =>
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.month).toFixed(1)},${y(p[key]).toFixed(1)}`).join(' ');
+  const area = (key: 'balanceCents' | 'investedCents') =>
+    `${line(key)} L${x(months).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
+
+  const reveal = useAnimatedProps(() => ({ width: Math.max(0.01, (width - padX * 2) * draw.value) }));
+
+  const label = (m: number) => (m % 12 === 0 ? `${m / 12}a` : `${m}m`);
+
+  return (
+    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height }}>
+      {width > 0 && points.length > 1 ? (
+        <Svg width={width} height={height}>
+          <Defs>
+            <LinearGradient id="growthTotal" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor={t.income} stopOpacity={0.55} />
+              <Stop offset="100%" stopColor={t.income} stopOpacity={0.05} />
+            </LinearGradient>
+            <LinearGradient id="growthIn" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor={t.primary} stopOpacity={0.5} />
+              <Stop offset="100%" stopColor={t.primary} stopOpacity={0.12} />
+            </LinearGradient>
+            <ClipPath id="growthClip">
+              <ARect x={padX} y={0} height={height} animatedProps={reveal} />
+            </ClipPath>
+          </Defs>
+          <G clipPath="url(#growthClip)">
+            <Path d={area('balanceCents')} fill="url(#growthTotal)" />
+            <Path d={area('investedCents')} fill="url(#growthIn)" />
+            <Path d={line('balanceCents')} stroke={t.income} strokeWidth={2.5} fill="none" strokeLinejoin="round" />
+            <Path d={line('investedCents')} stroke={t.primary} strokeWidth={2} fill="none" strokeDasharray="5 4" />
+          </G>
+          <Line x1={padX} y1={y(0)} x2={width - padX} y2={y(0)} stroke={t.border} strokeWidth={1} />
+          {[0, Math.round(months / 2), months].map((m, i) => (
+            <SvgText
+              key={m}
+              x={i === 0 ? x(m) + 6 : i === 2 ? x(m) - 10 : x(m)}
+              y={height - 6}
+              textAnchor="middle"
+              fontSize={11}
+              fontWeight="600"
+              fontFamily={FONT}
+              fill={t.faint}>
+              {label(m)}
+            </SvgText>
+          ))}
+        </Svg>
+      ) : null}
+    </View>
+  );
 }

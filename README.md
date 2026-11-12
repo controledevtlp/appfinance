@@ -11,6 +11,7 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 | **Lançamentos** | Lista por dia com busca e filtro; adicionar/editar/excluir; **grade visual de categorias** com ícone; categoria sugerida pelo nome; apelido para gastos |
 | **Detalhe** | Toque em qualquer número e veja exatamente os lançamentos que o formaram, com composição por categoria |
 | **Orçamento** | Limite ideal por categoria (calculado sobre a sua renda), barras de uso, limites personalizáveis |
+| **Investir** | Simulador de renda fixa: quanto você vai ter, ou quanto precisa guardar por mês; comparação de Tesouro Selic, CDB, LCI/LCA e poupança **pelo líquido** |
 | **Dicas** | *Onde economizar*: alertas por gravidade, cada um com **plano em etapas** e economia estimada. *Onde fazer render*: **renda fixa**, na ordem reserva → prazo |
 | **Importar extrato** | CSV, OFX e **PDF**, com prévia, correção de categoria (e de entrada/saída), descarte de duplicados e **mapeamento de gastos constantes** |
 | **Minha renda** | Informe quanto recebe sem precisar de extrato: várias fontes (salário, freela, aluguel…), **cartão alimentação**, total ao vivo e prévia do 50/30/20 enquanto digita |
@@ -30,7 +31,7 @@ dicas de economia e importação de extrato. Dados na nuvem via **Supabase** (ou
 - Excessos menores que R$ 20 não geram dica.
 - A soma "você libera até X/mês" não conta duas vezes: juros que já estão numa categoria estourada entram uma vez só.
 
-Todo o motor é TypeScript puro e testado: `npm test` (92 testes).
+Todo o motor é TypeScript puro e testado: `npm test` (110 testes).
 
 ## Rodar no computador
 
@@ -102,6 +103,15 @@ Entrada e saída de dinheiro têm cores próprias (menta e coral), porque ali a 
 **O truque de desempenho:** desfocar cada cartão de verdade é caro, principalmente no Android. Em vez disso, o fundo já é suave — brilhos em degradê radial desenhados uma vez em SVG (`Backdrop`) — e os cartões são só uma camada translúcida com borda clara de 1px. A leitura é de vidro e o custo é de uma `View` comum. Desfoque real (`expo-blur`) fica só na barra de navegação, que é um elemento só.
 
 Os dois temas são de vidro: escuro = branco a 5,5% sobre carvão esverdeado com acento sálvia claro; claro = branco translúcido sobre off-white esverdeado com acento verde-floresta (sálvia não tem contraste para texto em fundo claro). Tudo sai de `src/theme/index.ts`, inclusive a paleta dos gráficos.
+
+## Simulador de investimentos (`src/engine/invest.ts`)
+Matemática pura e testada: juros compostos com aporte mensal, tabela regressiva do IR (22,5% / 20% / 17,5% / 15%) e a regra da poupança (trava em 0,5% ao mês com a Selic acima de 8,5%).
+
+Dois modos: **quanto vou ter** e **quanto preciso guardar**. O segundo mira o valor **líquido** — se mirasse o bruto, você pediria R$ 30 mil, o app daria um aporte e no fim chegariam R$ 29 mil, porque o imposto comeria a diferença.
+
+A comparação ordena pelo que sobra depois do imposto, e é aí que está o aprendizado: **uma LCI de 90% do CDI isenta ganha de um CDB de 100% tributado**. Taxa de vitrine não diz nada sozinha.
+
+A taxa de referência (CDI/Selic) é digitada por você e fica guardada. Não cravei um número no código de propósito: a Selic muda, e um valor fixo envelheceria mentindo. O que o app não faz: buscar a taxa sozinho (precisaria de um serviço externo) e prometer rendimento — está escrito na tela que é simulação, não recomendação.
 
 ## Cabeçalho transparente
 O cabeçalho é transparente para o degradê atravessar a tela inteira — e cabeçalho transparente fica **por cima** do conteúdo. Sem folga no topo, o primeiro elemento (o seletor de mês) nasce embaixo do título. Quem calcula essa folga é `useHeaderPad()`, que pega a altura real do cabeçalho pelo navegador e só cai para um cálculo manual em tela sem cabeçalho.

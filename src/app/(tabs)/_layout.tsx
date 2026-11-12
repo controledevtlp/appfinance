@@ -20,6 +20,7 @@ const TABS: { name: string; label: string; icon: IconName; active: IconName }[] 
   { name: 'lancamentos', label: 'Gastos', icon: 'list-outline', active: 'list' },
   { name: 'orcamento', label: 'Limites', icon: 'wallet-outline', active: 'wallet' },
   { name: 'dicas', label: 'Dicas', icon: 'bulb-outline', active: 'bulb' },
+  { name: 'investir', label: 'Investir', icon: 'trending-up-outline', active: 'trending-up' },
   { name: 'ajustes', label: 'Ajustes', icon: 'settings-outline', active: 'settings' },
 ];
 
