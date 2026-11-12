@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 import { Donut, MonthlyBars, SpendingPace } from '@/components/charts';
 import { Appear, Bar, MoneyTicker, Press } from '@/components/motion';
-import { Button, Card, Empty, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
+import { Button, Card, CardTitle, Empty, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { currentMonthKey, daysInMonth } from '@/engine/dates';
 import { formatBRL, formatBRLShort } from '@/engine/money';
@@ -69,7 +69,7 @@ export default function Painel() {
             <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>Sobrou no mês</Txt>
             <Icon name={summary.balanceCents >= 0 ? 'trending-up' : 'trending-down'} size={18} color={t.heroText} />
           </View>
-          <MoneyTicker cents={summary.balanceCents} style={{ fontSize: 40, fontWeight: '800', letterSpacing: -1.4, color: t.heroText }} />
+          <MoneyTicker cents={summary.balanceCents} style={{ fontSize: 40, lineHeight: 48, fontWeight: '800', letterSpacing: -1.4, color: t.heroText }} />
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 2 }}>
             <HeroStat label="Entrou" value={formatBRL(summary.incomeCents).replace('R$ ', '')} drill={{ kind: 'income' }} />
             <HeroStat label="Saiu" value={formatBRL(summary.expenseCents).replace('R$ ', '')} drill={{ kind: 'expense' }} />
@@ -91,14 +91,12 @@ export default function Painel() {
       {isCurrent && budgetCents > 0 && pace.length > 1 ? (
         <Appear index={1}>
           <Card>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <View style={{ flex: 1 }}>
-                <Txt variant="label">Ritmo do mês</Txt>
-                <Txt variant="h2" style={{ marginTop: -4 }}>Você tá indo rápido?</Txt>
-                <Txt variant="small">A linha cheia é o que você já gastou. A tracejada é o ritmo que cabe no seu mês.</Txt>
-              </View>
-              <Icon name={paceDiff > 0 ? 'trending-up' : 'trending-down'} color={paceDiff > 0 ? t.over : t.ok} size={22} />
-            </View>
+            <CardTitle
+              label="Ritmo do mês"
+              title="Você tá indo rápido?"
+              hint="A linha cheia é o que você já gastou. A tracejada é o ritmo que cabe no seu mês."
+              right={<Icon name={paceDiff > 0 ? 'trending-up' : 'trending-down'} color={paceDiff > 0 ? t.over : t.ok} size={22} />}
+            />
             <SpendingPace points={pace} totalDays={daysInMonth(month)} />
             <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap' }}>
               <Stat label={`Gasto até o dia ${last.day}`} value={formatBRL(last.cumulativeCents)} color={t.text} drill={{ kind: 'expense' }} />
@@ -121,9 +119,9 @@ export default function Painel() {
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               <Donut size={104} thickness={11} centerSize={0.3} slices={[{ value: health.score, color: healthColor }, { value: 100 - health.score, color: 'transparent' }]} center={String(health.score)} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, gap: 3 }}>
                 <Txt variant="label">Como tá sua grana</Txt>
-                <Txt variant="title" color={healthColor} style={{ fontSize: 24 }}>{health.label}</Txt>
+                <Txt variant="title" color={healthColor} style={{ fontSize: 24, lineHeight: 30 }}>{health.label}</Txt>
                 <Txt variant="small">{isCurrent ? 'Nota parcial: o mês ainda não acabou, então ela tende a ser otimista.' : 'Nota de 0 a 100, somando 4 critérios.'}</Txt>
               </View>
             </View>
@@ -143,9 +141,7 @@ export default function Painel() {
 
       <Appear index={3}>
         <Card>
-          <Txt variant="label">A regra 50/30/20</Txt>
-          <Txt variant="h2" style={{ marginTop: -4 }}>Pra onde sua renda foi</Txt>
-          <Txt variant="small">O risquinho em cada barra marca o ideal.</Txt>
+          <CardTitle label="A regra 50/30/20" title="Pra onde sua renda foi" hint="O risquinho em cada barra marca o ideal." />
           {summary.groups.map((g, i) => {
             const ratio = g.idealCents > 0 ? g.spentCents / g.idealCents : 0;
             const bad = g.group !== 'poupanca' && ratio > 1;
@@ -166,8 +162,7 @@ export default function Painel() {
       {top.length > 0 ? (
         <Appear index={4}>
           <Card>
-            <Txt variant="label">Top 5</Txt>
-            <Txt variant="h2" style={{ marginTop: -4 }}>Onde a grana foi parar</Txt>
+            <CardTitle label="Top 5" title="Onde a grana foi parar" />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <Donut size={122} thickness={17} centerSize={0.2} slices={top} center={formatBRLShort(summary.expenseCents).replace('R$ ', '')} sub="gastos" />
               <View style={{ flex: 1, gap: 8 }}>
@@ -196,8 +191,7 @@ export default function Painel() {
 
       <Appear index={5}>
         <Card>
-          <Txt variant="label">Últimos 6 meses</Txt>
-          <Txt variant="h2" style={{ marginTop: -4 }}>Entrou × saiu</Txt>
+          <CardTitle label="Últimos 6 meses" title="Entrou × saiu" />
           <MonthlyBars data={series} />
         </Card>
       </Appear>
@@ -210,7 +204,7 @@ export default function Painel() {
               <Txt variant="h2">Gastos constantes</Txt>
               <Txt variant="muted">{summary.baseIncomeCents > 0 ? `${Math.round((recurringCents / summary.baseIncomeCents) * 100)}% da renda` : ''}</Txt>
             </View>
-            <MoneyTicker cents={recurringCents} style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.8, color: t.textStrong }} />
+            <MoneyTicker cents={recurringCents} style={{ fontSize: 30, lineHeight: 38, fontWeight: '800', letterSpacing: -0.8, color: t.textStrong }} />
             <Bar ratio={summary.baseIncomeCents > 0 ? recurringCents / summary.baseIncomeCents : 0} color={t.necessidades} markerAt={0.5} />
             <Txt variant="small">É o que sai todo mês, faça chuva ou faça sol. Abaixo de 50% da renda, o orçamento respira.</Txt>
           </Card>

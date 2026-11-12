@@ -64,14 +64,14 @@ export function Txt({
 }) {
   const t = useTheme();
   const base: Record<Variant, TextStyle> = {
-    hero: { fontSize: 40, fontWeight: '800', color: t.textStrong, letterSpacing: -1.2 },
-    big: { fontSize: 30, fontWeight: '800', color: t.textStrong, letterSpacing: -0.8 },
-    title: { fontSize: 21, fontWeight: '700', color: t.textStrong, letterSpacing: -0.4 },
-    h2: { fontSize: 16, fontWeight: '700', color: t.textStrong, letterSpacing: -0.2 },
-    body: { fontSize: 15, color: t.text },
-    muted: { fontSize: 13, color: t.muted },
-    small: { fontSize: 12, color: t.muted, lineHeight: 17 },
-    label: { fontSize: 11, fontWeight: '700', color: t.muted, letterSpacing: 0.8, textTransform: 'uppercase' },
+    hero: { fontSize: 40, lineHeight: 46, fontWeight: '800', color: t.textStrong, letterSpacing: -1.2 },
+    big: { fontSize: 30, lineHeight: 36, fontWeight: '800', color: t.textStrong, letterSpacing: -0.8 },
+    title: { fontSize: 21, lineHeight: 27, fontWeight: '700', color: t.textStrong, letterSpacing: -0.4 },
+    h2: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: t.textStrong, letterSpacing: -0.2 },
+    body: { fontSize: 15, lineHeight: 21, color: t.text },
+    muted: { fontSize: 13, lineHeight: 19, color: t.muted },
+    small: { fontSize: 12, lineHeight: 17, color: t.muted },
+    label: { fontSize: 11, lineHeight: 16, fontWeight: '700', color: t.muted, letterSpacing: 0.8, textTransform: 'uppercase' },
   };
   return (
     <Text
@@ -278,6 +278,24 @@ export function MoneyField({
         />
       </View>
       {hint ? <Txt variant="small">{hint}</Txt> : null}
+    </View>
+  );
+}
+
+/**
+ * Rótulo pequeno, título e linha de apoio, com o espaço certo entre eles.
+ * Existe para ninguém precisar de margem negativa: com fonte grande do
+ * sistema, margem negativa faz as linhas se tocarem.
+ */
+export function CardTitle({ label, title, hint, right }: { label: string; title: string; hint?: string; right?: ReactNode }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Txt variant="label">{label}</Txt>
+        <Txt variant="h2">{title}</Txt>
+        {hint ? <Txt variant="small" style={{ marginTop: 2 }}>{hint}</Txt> : null}
+      </View>
+      {right}
     </View>
   );
 }
