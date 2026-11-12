@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -161,7 +161,6 @@ export default function TabLayout() {
           headerShadowVisible: false,
           headerStyle: { backgroundColor: 'transparent' },
           sceneStyle: { backgroundColor: 'transparent' },
-          ...(Platform.OS === 'web' ? { headerShown: false } : {}),
         }}>
         {TABS.map((tab) => (
           <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab.label }} />

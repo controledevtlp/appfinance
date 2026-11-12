@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Switch, TextInput, View } from 'react-native';
 import { Appear, Bar, Press } from '@/components/motion';
 import { Backdrop } from '@/components/glass';
-import { Button, Card, Chip, Icon, MoneyField, Txt } from '@/components/ui';
+import { Button, Card, Chip, Icon, MoneyField, Txt, useHeaderPad } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { currentMonthKey, monthLabel, todayISO } from '@/engine/dates';
 import { formatBRL, parseMoneyToCents } from '@/engine/money';
@@ -32,6 +32,7 @@ const newId = () => `src-${Date.now().toString(36)}-${seq++}`;
 export default function Renda() {
   const t = useTheme();
   const { settings, saveSettings, addTransactions, transactions, month } = useApp();
+  const padTop = useHeaderPad();
 
   const [drafts, setDrafts] = useState<Draft[]>(() => {
     const saved = settings.incomeSources;
@@ -106,7 +107,7 @@ export default function Renda() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Backdrop />
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 60, paddingTop: 70 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 60, paddingTop: padTop }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Appear index={0}>
           <Card tone={[t.heroFrom, t.heroTo]}>
             <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>O que você recebe por mês</Txt>

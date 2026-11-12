@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, SectionList, TextInput, View } from 'react-native';
 import { Backdrop, useHasBackdrop } from '@/components/glass';
 import { Press } from '@/components/motion';
-import { CategoryBadge, Chip, Icon, MonthSwitcher, Txt, tap } from '@/components/ui';
+import { CategoryBadge, Chip, Icon, MonthSwitcher, Txt, tap, useHeaderPad } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { getCategory } from '@/engine/categories';
 import { normalize } from '@/engine/categorizer';
@@ -20,6 +20,7 @@ export default function Lancamentos() {
   const t = useTheme();
   const { transactions, month, setMonth, settings } = useApp();
   const hasBackdrop = useHasBackdrop();
+  const padTop = useHeaderPad();
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
 
@@ -38,7 +39,7 @@ export default function Lancamentos() {
   return (
     <View style={{ flex: 1 }}>
       {hasBackdrop ? null : <Backdrop />}
-      <View style={{ padding: 16, gap: 10, paddingTop: 70 }}>
+      <View style={{ padding: 16, gap: 10, paddingTop: padTop }}>
         <MonthSwitcher month={month} onChange={setMonth} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.fieldBg, borderRadius: radius.pill, borderWidth: 1, borderColor: t.border, paddingHorizontal: 14 }}>
           <Icon name="search" size={18} color={t.muted} />

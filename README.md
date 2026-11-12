@@ -103,6 +103,11 @@ Entrada e saída de dinheiro têm cores próprias (menta e coral), porque ali a 
 
 Os dois temas são de vidro: escuro = branco a 5,5% sobre carvão esverdeado com acento sálvia claro; claro = branco translúcido sobre off-white esverdeado com acento verde-floresta (sálvia não tem contraste para texto em fundo claro). Tudo sai de `src/theme/index.ts`, inclusive a paleta dos gráficos.
 
+## Cabeçalho transparente
+O cabeçalho é transparente para o degradê atravessar a tela inteira — e cabeçalho transparente fica **por cima** do conteúdo. Sem folga no topo, o primeiro elemento (o seletor de mês) nasce embaixo do título. Quem calcula essa folga é `useHeaderPad()`, que pega a altura real do cabeçalho pelo navegador e só cai para um cálculo manual em tela sem cabeçalho.
+
+Os cabeçalhos também aparecem na versão web. Ficavam escondidos lá, e foi por isso que esse problema passou: os testes de tela não mostravam o caso que existe no celular.
+
 ## Troca de abas
 Três coisas faziam a troca parecer cortada:
 - a transição das telas vem desligada por padrão (`animation: 'none'`) — agora é `shift` com 220ms;

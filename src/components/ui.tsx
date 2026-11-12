@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
-import { useState, type ReactNode } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -15,6 +15,8 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, getCategory } from '@/engine/categories';
 import { monthLabel, shiftMonth } from '@/engine/dates';
 import type { TxType } from '@/engine/types';
@@ -300,14 +302,29 @@ export function CardTitle({ label, title, hint, right }: { label: string; title:
   );
 }
 
+/**
+ * Espaço que o conteúdo precisa deixar no topo.
+ *
+ * O cabeçalho é transparente (para o degradê atravessar a tela inteira), e
+ * cabeçalho transparente fica *por cima* do conteúdo: sem esta folga, o
+ * primeiro elemento nasce embaixo do título. O valor vem do próprio
+ * navegador; o cálculo manual é só para telas sem cabeçalho nenhum.
+ */
+export function useHeaderPad(extra = space.md): number {
+  const headerHeight = useContext(HeaderHeightContext);
+  const insets = useSafeAreaInsets();
+  return (headerHeight ?? insets.top + 56) + extra;
+}
+
 export function Screen({ children, padBottom = 150 }: { children: ReactNode; padBottom?: number }) {
   const hasBackdrop = useHasBackdrop();
+  const padTop = useHeaderPad();
   return (
     <View style={{ flex: 1 }}>
       {hasBackdrop ? null : <Backdrop />}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: padBottom }}
+        contentContainerStyle={{ padding: space.lg, gap: space.md, paddingTop: padTop, paddingBottom: padBottom }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {children}
