@@ -108,10 +108,10 @@ export default function Renda() {
       <Backdrop />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 60, paddingTop: 70 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Appear index={0}>
-          <Card tone={[t.primaryFrom, t.primaryTo]}>
-            <Txt variant="muted" color={t.primaryText}>O que você recebe por mês</Txt>
-            <Txt variant="big" color={t.primaryText}>{formatBRL(totalCents)}</Txt>
-            <Txt variant="small" color={t.primaryText}>
+          <Card tone={[t.heroFrom, t.heroTo]}>
+            <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>O que você recebe por mês</Txt>
+            <Txt variant="hero" color={t.heroText}>{formatBRL(totalCents)}</Txt>
+            <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>
               É o que cai na conta depois dos descontos. Soma tudo que entra certinho todo mês.
             </Txt>
           </Card>

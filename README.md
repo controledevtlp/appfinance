@@ -94,12 +94,14 @@ Seção separada na aba Dicas, que acompanha a situação: enquanto a reserva n�
 ## O jeito de falar
 O app conversa como um amigo que entende de grana, não como gerente de banco: "Opa, você tá gastando mais do que ganha", "Dá pra guardar R$ 710/mês", "Tá de boa". Quando o buraco é sério, ele fala sério — sem meias palavras. Os números e as regras continuam exatos; o que mudou foi o tom. Os avisos de que isso não é recomendação de investimento continuam onde precisam estar.
 
-## Visual (glassmorphism)
-Fundo com degradê e brilhos coloridos difusos, cartões de vidro translúcido por cima, destaques com degradê roxo→violeta. Verde e vermelho ficam reservados para entrada e saída de dinheiro, onde a cor precisa significar alguma coisa.
+## Visual (glassmorphism em verde-sálvia)
+Carvão quase preto com acento **verde-sálvia**, inspirado numa referência de dashboard financeiro. O acento aparece em pontos — pílula da aba ativa, quadradinho de ícone, cartão de saldo —, não espalhado pela tela: é o que separa "elegante" de "cansativo". Os brilhos do fundo são discretos de propósito; o que dá profundidade é o degradê dos cartões.
+
+Entrada e saída de dinheiro têm cores próprias (menta e coral), porque ali a cor precisa significar alguma coisa e não pode se confundir com o acento.
 
 **O truque de desempenho:** desfocar cada cartão de verdade é caro, principalmente no Android. Em vez disso, o fundo já é suave — brilhos em degradê radial desenhados uma vez em SVG (`Backdrop`) — e os cartões são só uma camada translúcida com borda clara de 1px. A leitura é de vidro e o custo é de uma `View` comum. Desfoque real (`expo-blur`) fica só na barra de navegação, que é um elemento só.
 
-Os dois temas são de vidro: claro = branco translúcido sobre degradê pastel, escuro = branco a 7% sobre carvão arroxeado. Tudo sai de `src/theme/index.ts`, inclusive a paleta dos gráficos, que clareia no escuro.
+Os dois temas são de vidro: escuro = branco a 5,5% sobre carvão esverdeado com acento sálvia claro; claro = branco translúcido sobre off-white esverdeado com acento verde-floresta (sálvia não tem contraste para texto em fundo claro). Tudo sai de `src/theme/index.ts`, inclusive a paleta dos gráficos.
 
 ## Gráficos e animações
 Barras e áreas com degradê, pontas arredondadas, valores escritos em cima das barras e hierarquia de texto (rótulo em caixa alta pequena, número grande e pesado). O valor principal do painel **conta até o número** em vez de aparecer pronto: no celular isso roda na thread de UI (`animatedProps` sobre um `TextInput`), no navegador cai para um contador simples, porque ali o Reanimated não anima texto.

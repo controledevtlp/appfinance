@@ -23,8 +23,8 @@ export function Backdrop() {
         <Defs>
           {t.glow.map(([color], i) => (
             <RadialGradient key={i} id={`glow${i}`} cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor={color} stopOpacity={0.55} />
-              <Stop offset="55%" stopColor={color} stopOpacity={0.18} />
+              <Stop offset="0%" stopColor={color} stopOpacity={0.36} />
+              <Stop offset="55%" stopColor={color} stopOpacity={0.11} />
               <Stop offset="100%" stopColor={color} stopOpacity={0} />
             </RadialGradient>
           ))}

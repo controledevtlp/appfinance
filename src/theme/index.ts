@@ -1,8 +1,12 @@
 import { useColorScheme } from 'react-native';
 
 /*
- * Visual "glassmorphism": fundo com brilhos coloridos difusos e cartões de
- * vidro translúcido por cima.
+ * Visual "glassmorphism" em verde-sálvia sobre carvão.
+ *
+ * O acento é um verde acinzentado e calmo, usado em pontos — pílula ativa,
+ * quadradinho de ícone, cartão de saldo —, não espalhado pela tela inteira.
+ * Os brilhos do fundo são discretos de propósito: a referência é quase lisa,
+ * e o que dá profundidade é o degradê dos cartões, não o fundo.
  *
  * O truque de desempenho: em vez de desfocar cada cartão (caro, principalmente
  * no Android), o fundo já é suave — brilhos em degradê radial via SVG — e os
@@ -12,94 +16,107 @@ import { useColorScheme } from 'react-native';
  */
 
 const light = {
-  // Fundo: degradê de cima para baixo, mais os brilhos de `glow`.
   /** Cor sólida de fallback (atrás do degradê, e onde um sólido é necessário). */
-  bg: '#F1F0FA',
-  bgFrom: '#F4F3FB',
-  bgTo: '#E9EEFB',
-  /** Brilhos difusos do fundo: [cor, x%, y%, raio%]. */
+  bg: '#F2F5F2',
+  // Fundo: degradê de cima para baixo, mais os brilhos de `glow`.
+  bgFrom: '#F4F7F4',
+  bgTo: '#E8EFE9',
+  /** Brilhos difusos do fundo: [cor, x%, y%, raio%]. Discretos de propósito. */
   glow: [
-    ['#8B7DFF', 12, 8, 62],
-    ['#4FC9D6', 92, 26, 50],
-    ['#FF8FB1', 78, 88, 55],
+    ['#7FB399', 12, 6, 58],
+    ['#A9CDB8', 92, 30, 48],
+    ['#C9DDD0', 75, 90, 52],
   ] as [string, number, number, number][],
 
   // Vidro
-  card: 'rgba(255,255,255,0.78)',
-  cardBorder: 'rgba(255,255,255,0.9)',
-  cardShine: 'rgba(255,255,255,0.55)',
-  shadow: '#2A2458',
-  shadowOpacity: 0.1,
+  card: 'rgba(255,255,255,0.84)',
+  cardBorder: 'rgba(255,255,255,0.95)',
+  cardShine: 'rgba(255,255,255,0.6)',
+  shadow: '#1B2A22',
+  shadowOpacity: 0.09,
 
-  text: '#1A1733',
-  textStrong: '#120F28',
-  muted: '#67638A',
-  faint: 'rgba(26,23,51,0.45)',
-  border: 'rgba(26,23,51,0.1)',
-  fieldBg: 'rgba(255,255,255,0.65)',
+  text: '#16241D',
+  textStrong: '#0C1711',
+  muted: '#5E6E66',
+  faint: 'rgba(22,36,29,0.42)',
+  border: 'rgba(22,36,29,0.1)',
+  fieldBg: 'rgba(255,255,255,0.7)',
 
-  primary: '#6246EA',
-  primaryFrom: '#7C5CFF',
-  primaryTo: '#B86BFF',
+  primary: '#2F6B52',
+  primaryFrom: '#3C7A5E',
+  primaryTo: '#63A382',
   primaryText: '#FFFFFF',
-  soft: 'rgba(98,70,234,0.12)',
+  soft: 'rgba(47,107,82,0.12)',
+  /** Quadradinho de ícone: preenchimento sálvia com ícone escuro. */
+  badgeBg: '#CBE2D5',
+  badgeIcon: '#204436',
+  /** Degradê do cartão em destaque (saldo). */
+  heroFrom: '#2C5A46',
+  heroTo: '#74AE8E',
+  heroText: '#FFFFFF',
 
-  income: '#0E8F63',
-  expense: '#D92D55',
-  ok: '#0E8F63',
-  warning: '#B4690E',
-  over: '#D92D55',
-  info: '#1565C7',
+  income: '#1E7A52',
+  expense: '#C2563F',
+  ok: '#1E7A52',
+  warning: '#95671C',
+  over: '#C2563F',
+  info: '#2A6E8A',
 
-  necessidades: '#6246EA',
-  desejos: '#E08A1E',
-  poupanca: '#108FB5',
-  chart: ['#6246EA', '#E8833A', '#17A398', '#D6457F', '#2E8BD0', '#8B87A8'],
-  tabBar: 'rgba(255,255,255,0.72)',
+  necessidades: '#2F6B52',
+  desejos: '#95671C',
+  poupanca: '#2A6E8A',
+  chart: ['#2F6B52', '#C98A4B', '#3F8FA8', '#B06A77', '#7E9455', '#7C8A83'],
+  tabBar: 'rgba(255,255,255,0.74)',
   blurTint: 'light' as 'light' | 'dark',
 };
 
 const dark: typeof light = {
-  bg: '#0A0918',
-  bgFrom: '#0A0918',
-  bgTo: '#120F2B',
+  bg: '#0D100E',
+  bgFrom: '#0D100E',
+  bgTo: '#141A17',
+  // Quase nenhum brilho: a referência é calma, não é um fundo colorido.
   glow: [
-    ['#7C5CFF', 10, 6, 70],
-    ['#2BD9C7', 95, 30, 55],
-    ['#FF4F9A', 80, 92, 60],
+    ['#5E8F74', 14, 4, 60],
+    ['#2E6B55', 94, 34, 46],
+    ['#1F4738', 72, 94, 55],
   ],
 
-  card: 'rgba(255,255,255,0.07)',
-  cardBorder: 'rgba(255,255,255,0.14)',
-  cardShine: 'rgba(255,255,255,0.10)',
+  card: 'rgba(255,255,255,0.055)',
+  cardBorder: 'rgba(255,255,255,0.1)',
+  cardShine: 'rgba(168,205,181,0.08)',
   shadow: '#000000',
-  shadowOpacity: 0.45,
+  shadowOpacity: 0.5,
 
-  text: '#ECEAFB',
+  text: '#E4EBE6',
   textStrong: '#FFFFFF',
-  muted: '#A6A1C7',
-  faint: 'rgba(236,234,251,0.45)',
-  border: 'rgba(255,255,255,0.12)',
-  fieldBg: 'rgba(255,255,255,0.06)',
+  muted: '#8E9A93',
+  faint: 'rgba(228,235,230,0.4)',
+  border: 'rgba(255,255,255,0.1)',
+  fieldBg: 'rgba(255,255,255,0.05)',
 
-  primary: '#A78BFA',
-  primaryFrom: '#8B6CFF',
-  primaryTo: '#C77DFF',
-  primaryText: '#120F28',
-  soft: 'rgba(167,139,250,0.18)',
+  primary: '#A3CDB5',
+  primaryFrom: '#9CC7AD',
+  primaryTo: '#C2DCCC',
+  primaryText: '#10201A',
+  soft: 'rgba(163,205,181,0.14)',
+  badgeBg: '#A3CDB5',
+  badgeIcon: '#14271E',
+  heroFrom: '#22332B',
+  heroTo: '#5C8D74',
+  heroText: '#FFFFFF',
 
-  income: '#34E3A4',
-  expense: '#FF6B8A',
-  ok: '#34E3A4',
-  warning: '#FFC75A',
-  over: '#FF6B8A',
-  info: '#66C2FF',
+  income: '#5FD39B',
+  expense: '#E8836F',
+  ok: '#5FD39B',
+  warning: '#E0B470',
+  over: '#E8836F',
+  info: '#7FB8CF',
 
-  necessidades: '#A78BFA',
-  desejos: '#FFC75A',
-  poupanca: '#66C2FF',
-  chart: ['#A78BFA', '#FFB36B', '#2BD9C7', '#FF7BB0', '#66C2FF', '#A9A5C4'],
-  tabBar: 'rgba(18,15,43,0.72)',
+  necessidades: '#A3CDB5',
+  desejos: '#E0B470',
+  poupanca: '#7FB8CF',
+  chart: ['#A3CDB5', '#E0B06F', '#7FB8CF', '#D5909B', '#A9BC84', '#8E9A93'],
+  tabBar: 'rgba(16,21,18,0.74)',
   blurTint: 'dark',
 };
 

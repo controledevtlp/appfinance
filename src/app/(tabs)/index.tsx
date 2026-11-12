@@ -64,12 +64,12 @@ export default function Painel() {
       <MonthSwitcher month={month} onChange={setMonth} />
 
       <Appear index={0}>
-        <Card tone={[t.primaryFrom, t.primaryTo]} strength={1.3}>
+        <Card tone={[t.heroFrom, t.heroTo]} strength={1.3}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Txt variant="label" color={t.primaryText} style={{ opacity: 0.85 }}>Sobrou no mês</Txt>
-            <Icon name={summary.balanceCents >= 0 ? 'trending-up' : 'trending-down'} size={18} color={t.primaryText} />
+            <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>Sobrou no mês</Txt>
+            <Icon name={summary.balanceCents >= 0 ? 'trending-up' : 'trending-down'} size={18} color={t.heroText} />
           </View>
-          <MoneyTicker cents={summary.balanceCents} style={{ fontSize: 40, fontWeight: '800', letterSpacing: -1.4, color: t.primaryText }} />
+          <MoneyTicker cents={summary.balanceCents} style={{ fontSize: 40, fontWeight: '800', letterSpacing: -1.4, color: t.heroText }} />
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 2 }}>
             <HeroStat label="Entrou" value={formatBRL(summary.incomeCents).replace('R$ ', '')} drill={{ kind: 'income' }} />
             <HeroStat label="Saiu" value={formatBRL(summary.expenseCents).replace('R$ ', '')} drill={{ kind: 'expense' }} />
@@ -265,10 +265,10 @@ function HeroStat({ label, value, drill }: { label: string; value: string; drill
     <Press
       onPress={() => router.push({ pathname: '/detalhe', params: drill })}
       accessibilityLabel={`Ver ${label}`}
-      style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+      style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
       <View style={{ padding: 10, gap: 2 }}>
-        <Txt variant="small" color={t.primaryText} style={{ opacity: 0.8, fontSize: 11 }}>{label}</Txt>
-        <Txt color={t.primaryText} style={{ fontWeight: '800', fontSize: 15, letterSpacing: -0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <Txt variant="small" color={t.heroText} style={{ opacity: 0.75, fontSize: 11 }}>{label}</Txt>
+        <Txt color={t.heroText} style={{ fontWeight: '800', fontSize: 15, letterSpacing: -0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
           {value}
         </Txt>
       </View>

@@ -321,14 +321,12 @@ export function CategoryBadge({ categoryId, size = 40 }: { categoryId: string; s
       style={{
         width: size,
         height: size,
-        borderRadius: size / 3,
-        backgroundColor: t.soft,
-        borderWidth: 1,
-        borderColor: t.border,
+        borderRadius: size / 3.2,
+        backgroundColor: t.badgeBg,
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-      <Icon name={c.icon} size={size * 0.48} color={t.primary} />
+      <Icon name={c.icon} size={size * 0.46} color={t.badgeIcon} />
     </View>
   );
 }

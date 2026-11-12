@@ -27,10 +27,10 @@ export default function Dicas() {
         <>
           {total > 0 ? (
             <Appear index={0}>
-            <Card style={{ backgroundColor: t.primary, borderColor: t.primary }}>
-              <Txt variant="muted" color={t.primaryText}>Seguindo os planos aqui de baixo, dá pra sobrar até</Txt>
-              <Txt variant="big" color={t.primaryText}>{formatBRL(total)}/mês</Txt>
-              <Txt variant="small" color={t.primaryText}>Isso dá {formatBRL(total * 12)} no ano. Pensa no que você faria com esse dinheiro.</Txt>
+            <Card tone={[t.heroFrom, t.heroTo]} strength={1.2}>
+              <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>Seguindo os planos aqui de baixo, dá pra sobrar até</Txt>
+              <Txt variant="hero" color={t.heroText}>{formatBRL(total)}<Txt color={t.heroText} style={{ fontSize: 18, fontWeight: '700', opacity: 0.8 }}>/mês</Txt></Txt>
+              <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>Isso dá {formatBRL(total * 12)} no ano. Pensa no que você faria com esse dinheiro.</Txt>
             </Card>
             </Appear>
           ) : null}
