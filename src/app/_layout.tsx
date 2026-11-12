@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
+import { Backdrop } from '@/components/glass';
 import { Button, Card, Txt } from '@/components/ui';
 import { AppProvider, useApp } from '@/data/AppContext';
 import { useTheme } from '@/theme';
@@ -11,14 +12,16 @@ function Gate() {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Backdrop />
         <ActivityIndicator size="large" color={t.primary} />
       </View>
     );
   }
   if (error) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: t.bg }}>
+      <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
+        <Backdrop />
         <Card>
           <Txt variant="h2">Algo deu errado</Txt>
           <Txt variant="muted">{error}</Txt>
@@ -33,7 +36,15 @@ function Gate() {
   return (
     <>
       <StatusBar style="auto" />
-      <Stack screenOptions={{ headerStyle: { backgroundColor: t.card }, headerTintColor: t.text, contentStyle: { backgroundColor: t.bg } }}>
+      <Stack
+        screenOptions={{
+          headerTransparent: true,
+          headerTintColor: t.textStrong,
+          headerTitleStyle: { fontWeight: '800', fontSize: 18 },
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: 'transparent' },
+          contentStyle: { backgroundColor: t.bg },
+        }}>
         <Stack.Protected guard={needsLogin}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
         </Stack.Protected>

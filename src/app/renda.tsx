@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Switch, TextInput, View } from 'react-native';
 import { Appear, Bar, Press } from '@/components/motion';
+import { Backdrop } from '@/components/glass';
 import { Button, Card, Chip, Icon, MoneyField, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { currentMonthKey, monthLabel, todayISO } from '@/engine/dates';
@@ -103,10 +104,11 @@ export default function Renda() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: t.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Backdrop />
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 60, paddingTop: 70 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Appear index={0}>
-          <Card style={{ backgroundColor: t.primary, borderColor: t.primary }}>
+          <Card tone={[t.primaryFrom, t.primaryTo]}>
             <Txt variant="muted" color={t.primaryText}>O que você recebe por mês</Txt>
             <Txt variant="big" color={t.primaryText}>{formatBRL(totalCents)}</Txt>
             <Txt variant="small" color={t.primaryText}>

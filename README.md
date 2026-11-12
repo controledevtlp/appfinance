@@ -94,11 +94,17 @@ Seção separada na aba Dicas, que acompanha a situação: enquanto a reserva n�
 ## O jeito de falar
 O app conversa como um amigo que entende de grana, não como gerente de banco: "Opa, você tá gastando mais do que ganha", "Dá pra guardar R$ 710/mês", "Tá de boa". Quando o buraco é sério, ele fala sério — sem meias palavras. Os números e as regras continuam exatos; o que mudou foi o tom. Os avisos de que isso não é recomendação de investimento continuam onde precisam estar.
 
-## Cores
-Paleta índigo sobre neutro levemente arroxeado (`src/theme/index.ts`). Nada de branco puro nem preto puro: o contraste máximo cansa a vista em uso longo, então o fundo claro é um cinza-lavanda e o escuro é um carvão arroxeado. Verde e vermelho ficam reservados para entrada e saída de dinheiro, onde a cor precisa significar alguma coisa. A paleta dos gráficos também vem do tema, então ela clareia no modo escuro.
+## Visual (glassmorphism)
+Fundo com degradê e brilhos coloridos difusos, cartões de vidro translúcido por cima, destaques com degradê roxo→violeta. Verde e vermelho ficam reservados para entrada e saída de dinheiro, onde a cor precisa significar alguma coisa.
+
+**O truque de desempenho:** desfocar cada cartão de verdade é caro, principalmente no Android. Em vez disso, o fundo já é suave — brilhos em degradê radial desenhados uma vez em SVG (`Backdrop`) — e os cartões são só uma camada translúcida com borda clara de 1px. A leitura é de vidro e o custo é de uma `View` comum. Desfoque real (`expo-blur`) fica só na barra de navegação, que é um elemento só.
+
+Os dois temas são de vidro: claro = branco translúcido sobre degradê pastel, escuro = branco a 7% sobre carvão arroxeado. Tudo sai de `src/theme/index.ts`, inclusive a paleta dos gráficos, que clareia no escuro.
 
 ## Gráficos e animações
-Gráficos em SVG puro (`react-native-svg`), sem biblioteca de charts — são poucos elementos e o desenho é barato. As animações usam **Reanimated**, que roda na thread de UI: a rolagem não engasga enquanto o orçamento é recalculado, e nada anima quadro a quadro em JavaScript. As primitivas ficam em `src/components/motion.tsx` (entrada escalonada dos cartões, toque com resposta tátil, barras que crescem até o valor). Listas longas não recebem animação por item, de propósito. O Reanimated respeita "reduzir movimento" do sistema.
+Barras e áreas com degradê, pontas arredondadas, valores escritos em cima das barras e hierarquia de texto (rótulo em caixa alta pequena, número grande e pesado). O valor principal do painel **conta até o número** em vez de aparecer pronto: no celular isso roda na thread de UI (`animatedProps` sobre um `TextInput`), no navegador cai para um contador simples, porque ali o Reanimated não anima texto.
+
+Gráficos em SVG puro (`react-native-svg`), sem biblioteca de charts — são poucos elementos e o desenho é barato. As animações usam **Reanimated**, que roda na thread de UI: a rolagem não engasga enquanto o orçamento é recalculado, e nada anima quadro a quadro em JavaScript. As primitivas ficam em `src/components/motion.tsx` (entrada escalonada dos cartões, toque com resposta tátil, barras que crescem até o valor). Listas longas não recebem animação por item, de propósito. No celular, cada toque também dá um retorno tátil curto (`expo-haptics`). O Reanimated respeita "reduzir movimento" do sistema.
 
 ## Importar extrato
 No app/internet banking, exporte o extrato em **CSV, OFX ou PDF** (ou a fatura do cartão) e escolha o arquivo em *Importar extrato*.

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Backdrop, GradientPill } from '@/components/glass';
 import { Button, Card, Chip, Field, Icon, Txt } from '@/components/ui';
 import { supabase } from '@/data/supabase';
 import { useTheme } from '@/theme';
@@ -35,12 +36,13 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: t.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Backdrop />
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, gap: 20 }} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: 'center', gap: 8 }}>
-          <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: t.primary, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="wallet" size={32} color={t.primaryText} />
-          </View>
+          <GradientPill radius={22} style={{ width: 72, height: 72, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="wallet" size={34} color={t.primaryText} />
+          </GradientPill>
           <Txt variant="title">Finanças Claras</Txt>
           <Txt variant="muted" style={{ textAlign: 'center' }}>Entenda para onde vai o seu dinheiro e quanto dá para economizar.</Txt>
         </View>

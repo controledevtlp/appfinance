@@ -1,56 +1,106 @@
 import { useColorScheme } from 'react-native';
 
 /*
- * Paleta índigo sobre neutro levemente arroxeado.
+ * Visual "glassmorphism": fundo com brilhos coloridos difusos e cartões de
+ * vidro translúcido por cima.
  *
- * Por que não branco puro nem preto puro: o contraste máximo cansa a vista em
- * uso longo. O fundo claro é um cinza-lavanda de baixa saturação e o escuro é
- * um carvão arroxeado, não preto — fica mais confortável e dá profundidade.
- * O índigo carrega a interface; verde e vermelho ficam reservados para
- * entrada e saída de dinheiro, onde a cor precisa significar alguma coisa.
+ * O truque de desempenho: em vez de desfocar cada cartão (caro, principalmente
+ * no Android), o fundo já é suave — brilhos em degradê radial via SVG — e os
+ * cartões são só uma camada translúcida com uma borda clara de 1px. A leitura
+ * é de vidro, e o custo é de uma View comum. Desfoque de verdade fica só na
+ * barra de navegação, que é um elemento só.
  */
 
 const light = {
-  bg: '#F5F4FA',
-  card: '#FFFFFF',
-  text: '#1E1B2E',
-  muted: '#6C6880',
-  border: '#E6E3F0',
-  primary: '#5A4FD6',
+  // Fundo: degradê de cima para baixo, mais os brilhos de `glow`.
+  /** Cor sólida de fallback (atrás do degradê, e onde um sólido é necessário). */
+  bg: '#F1F0FA',
+  bgFrom: '#F4F3FB',
+  bgTo: '#E9EEFB',
+  /** Brilhos difusos do fundo: [cor, x%, y%, raio%]. */
+  glow: [
+    ['#8B7DFF', 12, 8, 62],
+    ['#4FC9D6', 92, 26, 50],
+    ['#FF8FB1', 78, 88, 55],
+  ] as [string, number, number, number][],
+
+  // Vidro
+  card: 'rgba(255,255,255,0.78)',
+  cardBorder: 'rgba(255,255,255,0.9)',
+  cardShine: 'rgba(255,255,255,0.55)',
+  shadow: '#2A2458',
+  shadowOpacity: 0.1,
+
+  text: '#1A1733',
+  textStrong: '#120F28',
+  muted: '#67638A',
+  faint: 'rgba(26,23,51,0.45)',
+  border: 'rgba(26,23,51,0.1)',
+  fieldBg: 'rgba(255,255,255,0.65)',
+
+  primary: '#6246EA',
+  primaryFrom: '#7C5CFF',
+  primaryTo: '#B86BFF',
   primaryText: '#FFFFFF',
-  soft: '#ECE9FB',
-  income: '#0B7A52',
-  expense: '#D12E4C',
-  ok: '#0B7A52',
-  warning: '#B45309',
-  over: '#D12E4C',
-  info: '#0369A1',
-  necessidades: '#5A4FD6',
-  desejos: '#D97706',
-  poupanca: '#0E8FBF',
-  /** Cores das fatias de gráfico, na ordem de uso. */
-  chart: ['#5A4FD6', '#E8833A', '#1C9AA8', '#D1497E', '#7BA23F', '#8E8AA6'],
+  soft: 'rgba(98,70,234,0.12)',
+
+  income: '#0E8F63',
+  expense: '#D92D55',
+  ok: '#0E8F63',
+  warning: '#B4690E',
+  over: '#D92D55',
+  info: '#1565C7',
+
+  necessidades: '#6246EA',
+  desejos: '#E08A1E',
+  poupanca: '#108FB5',
+  chart: ['#6246EA', '#E8833A', '#17A398', '#D6457F', '#2E8BD0', '#8B87A8'],
+  tabBar: 'rgba(255,255,255,0.72)',
+  blurTint: 'light' as 'light' | 'dark',
 };
 
 const dark: typeof light = {
-  bg: '#13121C',
-  card: '#1D1B2B',
-  text: '#EAE7F5',
-  muted: '#9D98B8',
-  border: '#2F2C44',
-  primary: '#9B8CFF',
-  primaryText: '#1A1730',
-  soft: '#272340',
-  income: '#3DD598',
-  expense: '#FF7A90',
-  ok: '#3DD598',
-  warning: '#F5B041',
-  over: '#FF7A90',
-  info: '#5FB8E8',
-  necessidades: '#9B8CFF',
-  desejos: '#F5B041',
-  poupanca: '#5FB8E8',
-  chart: ['#9B8CFF', '#F5A96B', '#4FC9D6', '#F07BAD', '#A8D16B', '#A9A5C4'],
+  bg: '#0A0918',
+  bgFrom: '#0A0918',
+  bgTo: '#120F2B',
+  glow: [
+    ['#7C5CFF', 10, 6, 70],
+    ['#2BD9C7', 95, 30, 55],
+    ['#FF4F9A', 80, 92, 60],
+  ],
+
+  card: 'rgba(255,255,255,0.07)',
+  cardBorder: 'rgba(255,255,255,0.14)',
+  cardShine: 'rgba(255,255,255,0.10)',
+  shadow: '#000000',
+  shadowOpacity: 0.45,
+
+  text: '#ECEAFB',
+  textStrong: '#FFFFFF',
+  muted: '#A6A1C7',
+  faint: 'rgba(236,234,251,0.45)',
+  border: 'rgba(255,255,255,0.12)',
+  fieldBg: 'rgba(255,255,255,0.06)',
+
+  primary: '#A78BFA',
+  primaryFrom: '#8B6CFF',
+  primaryTo: '#C77DFF',
+  primaryText: '#120F28',
+  soft: 'rgba(167,139,250,0.18)',
+
+  income: '#34E3A4',
+  expense: '#FF6B8A',
+  ok: '#34E3A4',
+  warning: '#FFC75A',
+  over: '#FF6B8A',
+  info: '#66C2FF',
+
+  necessidades: '#A78BFA',
+  desejos: '#FFC75A',
+  poupanca: '#66C2FF',
+  chart: ['#A78BFA', '#FFB36B', '#2BD9C7', '#FF7BB0', '#66C2FF', '#A9A5C4'],
+  tabBar: 'rgba(18,15,43,0.72)',
+  blurTint: 'dark',
 };
 
 export type Theme = typeof light;
@@ -60,4 +110,13 @@ export function useTheme(): Theme {
 }
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
-export const radius = { sm: 8, md: 14, lg: 20, pill: 999 };
+export const radius = { sm: 10, md: 16, lg: 24, xl: 30, pill: 999 };
+
+/** Sombra suave, igual nas duas plataformas. */
+export const glassShadow = (t: Theme, strength = 1) => ({
+  shadowColor: t.shadow,
+  shadowOpacity: t.shadowOpacity * strength,
+  shadowRadius: 22 * strength,
+  shadowOffset: { width: 0, height: 10 * strength },
+  elevation: 8 * strength,
+});

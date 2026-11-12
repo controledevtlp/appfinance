@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { View } from 'react-native';
 import { Donut, MonthlyBars, SpendingPace } from '@/components/charts';
-import { Appear, Bar, Press } from '@/components/motion';
+import { Appear, Bar, MoneyTicker, Press } from '@/components/motion';
 import { Button, Card, Empty, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { currentMonthKey, daysInMonth } from '@/engine/dates';
-import { formatBRL } from '@/engine/money';
+import { formatBRL, formatBRLShort } from '@/engine/money';
 import { confirmDialog, notify } from '@/lib/dialog';
 import { useTheme } from '@/theme';
 
@@ -64,13 +64,16 @@ export default function Painel() {
       <MonthSwitcher month={month} onChange={setMonth} />
 
       <Appear index={0}>
-        <Card>
-          <Txt variant="muted">Sobrou no mês</Txt>
-          <Txt variant="big" color={summary.balanceCents >= 0 ? t.income : t.expense}>{formatBRL(summary.balanceCents)}</Txt>
-          <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap' }}>
-            <Stat label="Receitas" value={formatBRL(summary.incomeCents)} color={t.income} drill={{ kind: 'income' }} />
-            <Stat label="Despesas" value={formatBRL(summary.expenseCents)} color={t.expense} drill={{ kind: 'expense' }} />
-            <Stat label="Investido" value={formatBRL(summary.investedCents)} color={t.poupanca} drill={{ kind: 'invested' }} />
+        <Card tone={[t.primaryFrom, t.primaryTo]} strength={1.3}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Txt variant="label" color={t.primaryText} style={{ opacity: 0.85 }}>Sobrou no mês</Txt>
+            <Icon name={summary.balanceCents >= 0 ? 'trending-up' : 'trending-down'} size={18} color={t.primaryText} />
+          </View>
+          <MoneyTicker cents={summary.balanceCents} style={{ fontSize: 40, fontWeight: '800', letterSpacing: -1.4, color: t.primaryText }} />
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 2 }}>
+            <HeroStat label="Entrou" value={formatBRL(summary.incomeCents).replace('R$ ', '')} drill={{ kind: 'income' }} />
+            <HeroStat label="Saiu" value={formatBRL(summary.expenseCents).replace('R$ ', '')} drill={{ kind: 'expense' }} />
+            <HeroStat label="Guardado" value={formatBRL(summary.investedCents).replace('R$ ', '')} drill={{ kind: 'invested' }} />
           </View>
         </Card>
       </Appear>
@@ -90,7 +93,8 @@ export default function Painel() {
           <Card>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <View style={{ flex: 1 }}>
-                <Txt variant="h2">Como tá o ritmo</Txt>
+                <Txt variant="label">Ritmo do mês</Txt>
+                <Txt variant="h2" style={{ marginTop: -4 }}>Você tá indo rápido?</Txt>
                 <Txt variant="small">A linha cheia é o que você já gastou. A tracejada é o ritmo que cabe no seu mês.</Txt>
               </View>
               <Icon name={paceDiff > 0 ? 'trending-up' : 'trending-down'} color={paceDiff > 0 ? t.over : t.ok} size={22} />
@@ -116,10 +120,10 @@ export default function Painel() {
         <Appear index={2}>
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              <Donut size={96} thickness={12} slices={[{ value: health.score, color: healthColor }, { value: 100 - health.score, color: 'transparent' }]} center={String(health.score)} />
+              <Donut size={104} thickness={11} centerSize={0.3} slices={[{ value: health.score, color: healthColor }, { value: 100 - health.score, color: 'transparent' }]} center={String(health.score)} />
               <View style={{ flex: 1 }}>
-                <Txt variant="muted">Como tá sua grana</Txt>
-                <Txt variant="title" color={healthColor}>{health.label}</Txt>
+                <Txt variant="label">Como tá sua grana</Txt>
+                <Txt variant="title" color={healthColor} style={{ fontSize: 24 }}>{health.label}</Txt>
                 <Txt variant="small">{isCurrent ? 'Nota parcial: o mês ainda não acabou, então ela tende a ser otimista.' : 'Nota de 0 a 100, somando 4 critérios.'}</Txt>
               </View>
             </View>
@@ -139,8 +143,9 @@ export default function Painel() {
 
       <Appear index={3}>
         <Card>
-          <Txt variant="h2">Regra 50/30/20</Txt>
-          <Txt variant="small">Quanto da sua renda foi pra cada grupo. O risquinho marca o ideal.</Txt>
+          <Txt variant="label">A regra 50/30/20</Txt>
+          <Txt variant="h2" style={{ marginTop: -4 }}>Pra onde sua renda foi</Txt>
+          <Txt variant="small">O risquinho em cada barra marca o ideal.</Txt>
           {summary.groups.map((g, i) => {
             const ratio = g.idealCents > 0 ? g.spentCents / g.idealCents : 0;
             const bad = g.group !== 'poupanca' && ratio > 1;
@@ -161,9 +166,10 @@ export default function Painel() {
       {top.length > 0 ? (
         <Appear index={4}>
           <Card>
-            <Txt variant="h2">Pra onde foi a grana</Txt>
+            <Txt variant="label">Top 5</Txt>
+            <Txt variant="h2" style={{ marginTop: -4 }}>Onde a grana foi parar</Txt>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <Donut size={120} thickness={18} slices={top} center={formatBRL(summary.expenseCents).replace('R$ ', '')} sub="gastos" />
+              <Donut size={122} thickness={17} centerSize={0.2} slices={top} center={formatBRLShort(summary.expenseCents).replace('R$ ', '')} sub="gastos" />
               <View style={{ flex: 1, gap: 8 }}>
                 {top.map((s, i) => {
                   const share = s.value / Math.max(1, summary.expenseCents);
@@ -190,8 +196,8 @@ export default function Painel() {
 
       <Appear index={5}>
         <Card>
-          <Txt variant="h2">Últimos 6 meses</Txt>
-          <Txt variant="small">Verde é o que entrou, vermelho é o que saiu.</Txt>
+          <Txt variant="label">Últimos 6 meses</Txt>
+          <Txt variant="h2" style={{ marginTop: -4 }}>Entrou × saiu</Txt>
           <MonthlyBars data={series} />
         </Card>
       </Appear>
@@ -204,7 +210,7 @@ export default function Painel() {
               <Txt variant="h2">Gastos constantes</Txt>
               <Txt variant="muted">{summary.baseIncomeCents > 0 ? `${Math.round((recurringCents / summary.baseIncomeCents) * 100)}% da renda` : ''}</Txt>
             </View>
-            <Txt variant="big" color={t.text}>{formatBRL(recurringCents)}</Txt>
+            <MoneyTicker cents={recurringCents} style={{ fontSize: 30, fontWeight: '800', letterSpacing: -0.8, color: t.textStrong }} />
             <Bar ratio={summary.baseIncomeCents > 0 ? recurringCents / summary.baseIncomeCents : 0} color={t.necessidades} markerAt={0.5} />
             <Txt variant="small">É o que sai todo mês, faça chuva ou faça sol. Abaixo de 50% da renda, o orçamento respira.</Txt>
           </Card>
@@ -252,16 +258,34 @@ export default function Painel() {
   );
 }
 
-/** Número do painel. Com `drill`, tocar abre a lista exata que formou o valor. */
+/** Mini cartão dentro do cartão principal, com fundo translúcido. */
+function HeroStat({ label, value, drill }: { label: string; value: string; drill: Record<string, string> }) {
+  const t = useTheme();
+  return (
+    <Press
+      onPress={() => router.push({ pathname: '/detalhe', params: drill })}
+      accessibilityLabel={`Ver ${label}`}
+      style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+      <View style={{ padding: 10, gap: 2 }}>
+        <Txt variant="small" color={t.primaryText} style={{ opacity: 0.8, fontSize: 11 }}>{label}</Txt>
+        <Txt color={t.primaryText} style={{ fontWeight: '800', fontSize: 15, letterSpacing: -0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+          {value}
+        </Txt>
+      </View>
+    </Press>
+  );
+}
+
+/** Número solto do painel. Com `drill`, tocar abre a lista que formou o valor. */
 function Stat({ label, value, color, drill }: { label: string; value: string; color: string; drill?: Record<string, string> }) {
   const t = useTheme();
   const body = (
     <View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-        <Txt variant="small">{label}</Txt>
+        <Txt variant="label" style={{ fontSize: 10 }}>{label}</Txt>
         {drill ? <Icon name="chevron-forward" size={11} color={t.muted} /> : null}
       </View>
-      <Txt style={{ fontWeight: '700' }} color={color}>{value}</Txt>
+      <Txt style={{ fontWeight: '800', fontSize: 17, letterSpacing: -0.4 }} color={color}>{value}</Txt>
     </View>
   );
   if (!drill) return body;

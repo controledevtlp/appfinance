@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, SectionList, TextInput, View } from 'react-native';
-import { CategoryBadge, Chip, Icon, MonthSwitcher, Txt } from '@/components/ui';
+import { Backdrop } from '@/components/glass';
+import { Press } from '@/components/motion';
+import { CategoryBadge, Chip, Icon, MonthSwitcher, Txt, tap } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { getCategory } from '@/engine/categories';
 import { normalize } from '@/engine/categorizer';
@@ -9,7 +11,8 @@ import { nameOf } from '@/engine/naming';
 import { dayLabel, monthKey } from '@/engine/dates';
 import { formatBRL } from '@/engine/money';
 import type { Transaction } from '@/engine/types';
-import { radius, useTheme } from '@/theme';
+import { glassShadow, radius, useTheme } from '@/theme';
+import { GradientPill } from '@/components/glass';
 
 type Filter = 'all' | 'expense' | 'income';
 
@@ -32,10 +35,11 @@ export default function Lancamentos() {
   }, [transactions, month, filter, query, settings]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.bg }}>
-      <View style={{ padding: 16, gap: 10 }}>
+    <View style={{ flex: 1 }}>
+      <Backdrop />
+      <View style={{ padding: 16, gap: 10, paddingTop: 70 }}>
         <MonthSwitcher month={month} onChange={setMonth} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.card, borderRadius: radius.md, borderWidth: 1, borderColor: t.border, paddingHorizontal: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.fieldBg, borderRadius: radius.pill, borderWidth: 1, borderColor: t.border, paddingHorizontal: 14 }}>
           <Icon name="search" size={18} color={t.muted} />
           <TextInput value={query} onChangeText={setQuery} placeholder="Procurar um gasto ou categoria" placeholderTextColor={t.muted} style={{ flex: 1, paddingVertical: 10, color: t.text, fontSize: 15 }} />
         </View>
@@ -49,14 +53,14 @@ export default function Lancamentos() {
       <SectionList
         sections={sections}
         keyExtractor={(x) => x.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={<Txt variant="muted" style={{ textAlign: 'center', marginTop: 40 }}>Nada lançado nesse mês ainda.</Txt>}
         renderSectionHeader={({ section }) => <Txt variant="small" style={{ marginTop: 14, marginBottom: 6, textTransform: 'capitalize' }}>{section.title}</Txt>}
         renderItem={({ item, index, section }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/transacao', params: { id: item.id } })}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: t.card, padding: 12, borderWidth: 1, borderColor: t.border, borderTopLeftRadius: index === 0 ? radius.md : 0, borderTopRightRadius: index === 0 ? radius.md : 0, borderBottomLeftRadius: index === section.data.length - 1 ? radius.md : 0, borderBottomRightRadius: index === section.data.length - 1 ? radius.md : 0, marginTop: -1 }}>
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: t.card, padding: 13, borderWidth: 1, borderColor: t.border, borderTopLeftRadius: index === 0 ? radius.lg : 0, borderTopRightRadius: index === 0 ? radius.lg : 0, borderBottomLeftRadius: index === section.data.length - 1 ? radius.lg : 0, borderBottomRightRadius: index === section.data.length - 1 ? radius.lg : 0, marginTop: -1 }}>
             <CategoryBadge categoryId={item.categoryId} />
             <View style={{ flex: 1 }}>
               <Txt numberOfLines={1} style={{ fontWeight: '600' }}>{nameOf(item, settings)}</Txt>
@@ -69,13 +73,18 @@ export default function Lancamentos() {
         )}
       />
 
-      <Pressable
+      <Press
         accessibilityRole="button"
         accessibilityLabel="Adicionar lançamento"
-        onPress={() => router.push('/transacao')}
-        style={{ position: 'absolute', right: 20, bottom: 24, width: 58, height: 58, borderRadius: 29, backgroundColor: t.primary, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } }}>
-        <Icon name="add" size={30} color={t.primaryText} />
-      </Pressable>
+        onPress={() => {
+          tap();
+          router.push('/transacao');
+        }}
+        style={{ position: 'absolute', right: 20, bottom: 104, borderRadius: 32 }}>
+        <GradientPill radius={32} style={[{ width: 62, height: 62, alignItems: 'center', justifyContent: 'center' }, glassShadow(t, 1.2)]}>
+          <Icon name="add" size={30} color={t.primaryText} />
+        </GradientPill>
+      </Press>
     </View>
   );
 }

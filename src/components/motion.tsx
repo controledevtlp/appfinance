@@ -173,3 +173,82 @@ export function Pill({ children, color, bg }: { children: ReactNode; color: stri
 }
 
 export { Animated };
+
+// --------------------------------------------------------- número animado
+
+import { useEffect as useEffectRN, useRef, useState } from 'react';
+import { Platform, TextInput, type TextStyle } from 'react-native';
+import { useAnimatedProps } from 'react-native-reanimated';
+
+const AnimatedInput = Animated.createAnimatedComponent(TextInput);
+
+/** Formata centavos como "R$ 1.234,56". Roda na thread de UI. */
+function formatCents(cents: number): string {
+  'worklet';
+  const neg = cents < 0;
+  const abs = Math.abs(Math.round(cents));
+  const frac = String(abs % 100).padStart(2, '0');
+  const int = String(Math.floor(abs / 100));
+  let out = '';
+  let n = 0;
+  for (let i = int.length - 1; i >= 0; i--) {
+    out = int[i] + out;
+    n++;
+    if (n % 3 === 0 && i > 0) out = '.' + out;
+  }
+  return `${neg ? '-' : ''}R$ ${out},${frac}`;
+}
+
+/**
+ * Valor em dinheiro que "conta" até o número, em vez de aparecer pronto.
+ *
+ * No celular a contagem roda na thread de UI (animatedProps sobre um
+ * TextInput), então não disputa com a rolagem. No navegador o Reanimated não
+ * anima texto desse jeito, então ali usamos um contador simples com
+ * requestAnimationFrame — é só um ou dois números por tela.
+ */
+export function MoneyTicker({
+  cents,
+  style,
+  duration = 900,
+}: {
+  cents: number;
+  style?: TextStyle | TextStyle[];
+  duration?: number;
+}) {
+  const value = useSharedValue(0);
+  const [webText, setWebText] = useState(() => formatCents(0));
+  const frame = useRef(0);
+
+  useEffectRN(() => {
+    if (Platform.OS === 'web') {
+      const from = 0;
+      const start = Date.now();
+      const tick = () => {
+        const p = Math.min(1, (Date.now() - start) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        setWebText(formatCents(from + (cents - from) * eased));
+        if (p < 1) frame.current = requestAnimationFrame(tick);
+      };
+      frame.current = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(frame.current);
+    }
+    value.value = withTiming(cents, { duration, easing: EASE });
+    return undefined;
+  }, [cents, duration, value]);
+
+  const animatedProps = useAnimatedProps(() => ({ text: formatCents(value.value) }) as never);
+
+  if (Platform.OS === 'web') {
+    return <Animated.Text style={style as never}>{webText}</Animated.Text>;
+  }
+  return (
+    <AnimatedInput
+      editable={false}
+      underlineColorAndroid="transparent"
+      value={formatCents(cents)}
+      animatedProps={animatedProps}
+      style={[{ padding: 0, margin: 0 }, style as never]}
+    />
+  );
+}
