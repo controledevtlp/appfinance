@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 import { Donut, MonthlyBars, SpendingPace } from '@/components/charts';
 import { Appear, Bar, MoneyTicker, Press } from '@/components/motion';
-import { Button, Card, CardTitle, Empty, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
+import { Button, Card, CardTitle, Empty, fitFontSize, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { currentMonthKey, daysInMonth } from '@/engine/dates';
 import { formatBRL, formatBRLShort } from '@/engine/money';
@@ -24,7 +24,8 @@ export default function Painel() {
     const sorted = summary.categories
       .filter((c) => c.spentCents > 0 && c.category.group !== 'poupanca')
       .sort((a, b) => b.spentCents - a.spentCents);
-    const head = sorted.slice(0, 5).map((c, i) => ({ name: c.category.name, value: c.spentCents, color: t.chart[i], categoryId: c.category.id }));
+    // Nome curto: "Financiamento do carro/moto" não cabe na legenda de um celular.
+    const head = sorted.slice(0, 5).map((c, i) => ({ name: c.category.short, value: c.spentCents, color: t.chart[i], categoryId: c.category.id }));
     const rest = sorted.slice(5).reduce((a, c) => a + c.spentCents, 0);
     return rest > 0 ? [...head, { name: 'Outras', value: rest, color: t.chart[5], categoryId: undefined }] : head;
   })();
@@ -70,7 +71,7 @@ export default function Painel() {
             <Icon name={summary.balanceCents >= 0 ? 'trending-up' : 'trending-down'} size={18} color={t.heroText} />
           </View>
           <MoneyTicker cents={summary.balanceCents} style={{ fontSize: 40, lineHeight: 48, fontWeight: '800', letterSpacing: -1.4, color: t.heroText }} />
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 2 }}>
+          <View style={{ flexDirection: 'row', gap: 7, marginTop: 2 }}>
             <HeroStat label="Entrou" value={formatBRL(summary.incomeCents).replace('R$ ', '')} drill={{ kind: 'income' }} />
             <HeroStat label="Saiu" value={formatBRL(summary.expenseCents).replace('R$ ', '')} drill={{ kind: 'expense' }} />
             <HeroStat label="Guardado" value={formatBRL(summary.investedCents).replace('R$ ', '')} drill={{ kind: 'invested' }} />
@@ -260,9 +261,9 @@ function HeroStat({ label, value, drill }: { label: string; value: string; drill
       onPress={() => router.push({ pathname: '/detalhe', params: drill })}
       accessibilityLabel={`Ver ${label}`}
       style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
-      <View style={{ padding: 10, gap: 2 }}>
+      <View style={{ paddingHorizontal: 8, paddingVertical: 9, gap: 2 }}>
         <Txt variant="small" color={t.heroText} style={{ opacity: 0.75, fontSize: 11 }}>{label}</Txt>
-        <Txt color={t.heroText} style={{ fontWeight: '800', fontSize: 15, letterSpacing: -0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <Txt color={t.heroText} style={{ fontWeight: '800', fontSize: fitFontSize(value), lineHeight: 20, letterSpacing: -0.3 }} numberOfLines={1}>
           {value}
         </Txt>
       </View>

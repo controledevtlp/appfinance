@@ -349,6 +349,16 @@ export function Empty({ icon, title, text, children }: { icon: string; title: st
   );
 }
 
+/**
+ * Tamanho de fonte que faz o valor caber numa caixa estreita.
+ * `adjustsFontSizeToFit` só funciona no iOS, então a conta é feita aqui, pelo
+ * comprimento do texto — assim o número não vira "40.200,…" no Android e na web.
+ */
+export function fitFontSize(text: string, max = 15, min = 10): number {
+  const over = text.length - 6;
+  return over <= 0 ? max : Math.max(min, max - over * 1.15);
+}
+
 export function CategoryBadge({ categoryId, size = 40 }: { categoryId: string; size?: number }) {
   const t = useTheme();
   const c = getCategory(categoryId);

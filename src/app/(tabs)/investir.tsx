@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { GrowthChart } from '@/components/charts';
 import { Appear, Bar, Press } from '@/components/motion';
-import { Button, Card, CardTitle, Chip, Icon, MoneyField, Screen, Txt } from '@/components/ui';
+import { Card, CardTitle, Chip, fitFontSize, Icon, MoneyField, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import {
   compareProducts,
@@ -123,7 +123,7 @@ export default function Investir() {
               <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>
                 Já descontado o imposto de renda{main.taxRate > 0 ? ` de ${(main.taxRate * 100).toFixed(1).replace('.', ',')}%` : ''}.
               </Txt>
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 2 }}>
+              <View style={{ flexDirection: 'row', gap: 7, marginTop: 2 }}>
                 <HeroBox label="Você colocou" value={formatBRL(main.investedCents).replace('R$ ', '')} />
                 <HeroBox label="Os juros deram" value={formatBRL(main.interestCents).replace('R$ ', '')} />
                 <HeroBox label="Imposto" value={formatBRL(main.taxCents).replace('R$ ', '')} />
@@ -210,9 +210,9 @@ function HeroBox({ label, value }: { label: string; value: string }) {
   const t = useTheme();
   return (
     <View style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
-      <View style={{ padding: 10, gap: 2 }}>
+      <View style={{ paddingHorizontal: 8, paddingVertical: 9, gap: 2 }}>
         <Txt variant="small" color={t.heroText} style={{ opacity: 0.75, fontSize: 11 }}>{label}</Txt>
-        <Txt color={t.heroText} style={{ fontWeight: '800', fontSize: 14, letterSpacing: -0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <Txt color={t.heroText} style={{ fontWeight: '800', fontSize: fitFontSize(value, 14), lineHeight: 19, letterSpacing: -0.3 }} numberOfLines={1}>
           {value}
         </Txt>
       </View>
@@ -228,10 +228,10 @@ function ProductRow({ row, best }: { row: Comparison; best: boolean }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Txt style={{ fontWeight: '700' }} numberOfLines={1}>{row.name}</Txt>
+            <Txt style={{ fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>{row.name}</Txt>
             {best ? <Icon name="trophy" size={13} color={t.primary} /> : null}
           </View>
-          <Txt variant="small" numberOfLines={1}>
+          <Txt variant="small" numberOfLines={2}>
             {best ? row.detail : `${formatBRL(row.behindBestCents)} a menos que o primeiro`}
           </Txt>
         </View>

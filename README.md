@@ -129,6 +129,10 @@ As telas ficam montadas (`detachInactiveScreens={false}`), então os cartões n�
 ## Gráficos e animações
 Barras e áreas com degradê, pontas arredondadas, valores escritos em cima das barras e hierarquia de texto (rótulo em caixa alta pequena, número grande e pesado). O valor principal do painel **conta até o número** em vez de aparecer pronto: no celular isso roda na thread de UI (`animatedProps` sobre um `TextInput`), no navegador cai para um contador simples, porque ali o Reanimated não anima texto.
 
+Todo gráfico tem **linhas de referência horizontais com o valor à esquerda**, numa escala "redonda" (1, 2, 2,5 ou 5 vezes uma potência de 10) para os números caírem em valores legíveis. Sem isso a pessoa vê a forma mas não sabe a ordem de grandeza, e o gráfico vira enfeite. O primeiro e o último rótulo do eixo horizontal são ancorados nas pontas, senão metade some na borda. Nas barras, o mês mais recente fica em destaque e os outros em meio-tom, para o olho achar o "agora" sem ler.
+
+Tudo foi conferido em **320, 360 e 430px de largura** — o teste varre a tela procurando texto cortado. Onde o número não cabia, o tamanho da fonte é calculado pelo comprimento do texto (`fitFontSize`), porque `adjustsFontSizeToFit` do React Native só funciona no iOS.
+
 Gráficos em SVG puro (`react-native-svg`), sem biblioteca de charts — são poucos elementos e o desenho é barato. As animações usam **Reanimated**, que roda na thread de UI: a rolagem não engasga enquanto o orçamento é recalculado, e nada anima quadro a quadro em JavaScript. As primitivas ficam em `src/components/motion.tsx` (entrada escalonada dos cartões, toque com resposta tátil, barras que crescem até o valor). Listas longas não recebem animação por item, de propósito. No celular, cada toque também dá um retorno tátil curto (`expo-haptics`). O Reanimated respeita "reduzir movimento" do sistema.
 
 ## Importar extrato
