@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -20,7 +21,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, getCategory } from '@/engine/categories';
 import { monthLabel, shiftMonth } from '@/engine/dates';
 import type { TxType } from '@/engine/types';
-import { glassShadow, radius, space, useTheme } from '@/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { currentMonthKey } from '@/engine/dates';
+import { font, glassShadow, radius, space, useTheme, withFont } from '@/theme';
 import { Backdrop, Glass, GradientPill, useHasBackdrop } from './glass';
 import { Press } from './motion';
 
@@ -44,7 +47,7 @@ export function Card({ children, style, tone, strength }: { children: ReactNode;
   );
 }
 
-type Variant = 'title' | 'h2' | 'body' | 'muted' | 'big' | 'small' | 'hero' | 'label';
+type Variant = 'display' | 'title' | 'h2' | 'body' | 'muted' | 'big' | 'small' | 'hero' | 'label';
 export function Txt({
   children,
   variant = 'body',
@@ -66,22 +69,25 @@ export function Txt({
 }) {
   const t = useTheme();
   const base: Record<Variant, TextStyle> = {
-    hero: { fontSize: 40, lineHeight: 46, fontWeight: '800', color: t.textStrong, letterSpacing: -1.2 },
+    hero: { fontSize: 38, lineHeight: 46, fontWeight: '800', color: t.textStrong, letterSpacing: -1.4 },
+    display: { fontSize: 28, lineHeight: 34, fontWeight: '800', color: t.textStrong, letterSpacing: -0.9 },
     big: { fontSize: 30, lineHeight: 36, fontWeight: '800', color: t.textStrong, letterSpacing: -0.8 },
     title: { fontSize: 21, lineHeight: 27, fontWeight: '700', color: t.textStrong, letterSpacing: -0.4 },
     h2: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: t.textStrong, letterSpacing: -0.2 },
-    body: { fontSize: 15, lineHeight: 21, color: t.text },
-    muted: { fontSize: 13, lineHeight: 19, color: t.muted },
-    small: { fontSize: 12, lineHeight: 17, color: t.muted },
-    label: { fontSize: 11, lineHeight: 16, fontWeight: '700', color: t.muted, letterSpacing: 0.8, textTransform: 'uppercase' },
+    body: { fontSize: 15, lineHeight: 22, fontWeight: '500', color: t.text },
+    muted: { fontSize: 13, lineHeight: 19, fontWeight: '500', color: t.muted },
+    small: { fontSize: 12, lineHeight: 17, fontWeight: '500', color: t.muted },
+    label: { fontSize: 10.5, lineHeight: 15, fontWeight: '700', color: t.muted, letterSpacing: 1.1, textTransform: 'uppercase' },
   };
+  // O peso vira nome de família: ver o comentário de `fonts` no tema.
+  const flat = withFont((StyleSheet.flatten([base[variant], color ? { color } : null, style]) ?? {}) as TextStyle);
   return (
     <Text
       onPress={onPress}
       numberOfLines={numberOfLines}
       adjustsFontSizeToFit={adjustsFontSizeToFit}
       minimumFontScale={minimumFontScale}
-      style={[base[variant], color ? { color } : null, style]}>
+      style={flat}>
       {children}
     </Text>
   );
@@ -109,7 +115,7 @@ export function Button({
   const inner = (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 18 }}>
       {loading ? <ActivityIndicator color={fg} /> : icon ? <Icon name={icon} size={18} color={fg} /> : null}
-      <Text style={{ color: fg, fontWeight: '700', fontSize: 15, letterSpacing: -0.2 }}>{title}</Text>
+      <Text style={{ color: fg, ...font('700'), fontSize: 15, letterSpacing: -0.2 }}>{title}</Text>
     </View>
   );
 
@@ -165,13 +171,18 @@ export function Chip({ label, selected, onPress, color, icon }: { label: string;
         backgroundColor: selected ? c : t.fieldBg,
       }}>
       {icon ? <Icon name={icon} size={14} color={selected ? t.primaryText : t.muted} /> : null}
-      <Text style={{ color: selected ? t.primaryText : t.text, fontSize: 13, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ color: selected ? t.primaryText : t.text, fontSize: 13, ...font(selected ? '700' : '600') }}>{label}</Text>
     </Press>
   );
 }
 
+/**
+ * Seletor de mês em formato de pílula. Tocar no nome do mês volta pra hoje,
+ * que é o atalho que mais faz falta depois de passear pelos meses antigos.
+ */
 export function MonthSwitcher({ month, onChange }: { month: string; onChange: (m: string) => void }) {
   const t = useTheme();
+  const isCurrent = month === currentMonthKey();
   const arrow = (delta: number, icon: string, label: string) => (
     <Press
       accessibilityRole="button"
@@ -180,24 +191,41 @@ export function MonthSwitcher({ month, onChange }: { month: string; onChange: (m
         tap();
         onChange(shiftMonth(month, delta));
       }}
-      hitSlop={10}
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: t.fieldBg,
-        borderWidth: 1,
-        borderColor: t.border,
-      }}>
+      hitSlop={8}
+      style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: t.soft }}>
       <Icon name={icon} size={18} color={t.primary} />
     </Press>
   );
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 2 }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        padding: 5,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: t.cardBorder,
+        backgroundColor: t.card,
+      }}>
       {arrow(-1, 'chevron-back', 'Mês anterior')}
-      <Txt variant="h2" style={{ fontSize: 17 }}>{monthLabel(month)}</Txt>
+      <Press
+        disabled={isCurrent}
+        accessibilityRole="button"
+        accessibilityLabel={isCurrent ? monthLabel(month) : `${monthLabel(month)}. Tocar volta para o mês atual`}
+        onPress={() => {
+          tap();
+          onChange(currentMonthKey());
+        }}
+        style={{ flex: 1 }}>
+        <View style={{ alignItems: 'center', justifyContent: 'center', minHeight: 38 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icon name="calendar-clear-outline" size={14} color={t.muted} />
+            <Txt variant="h2" numberOfLines={1} style={{ fontSize: 15, lineHeight: 20 }}>{monthLabel(month)}</Txt>
+          </View>
+          {isCurrent ? null : <Txt variant="small" color={t.primary} style={{ fontSize: 10.5, lineHeight: 14, fontWeight: '700' }}>toca pra voltar pra hoje</Txt>}
+        </View>
+      </Press>
       {arrow(1, 'chevron-forward', 'Próximo mês')}
     </View>
   );
@@ -221,6 +249,7 @@ export function Field({ label, hint, ...props }: TextInputProps & { label: strin
             paddingHorizontal: 14,
             paddingVertical: 13,
             fontSize: 16,
+            ...font('500'),
           },
           props.style,
         ]}
@@ -260,7 +289,7 @@ export function MoneyField({
           borderRadius: radius.md,
           paddingHorizontal: 14,
         }}>
-        <Text style={{ color: t.muted, fontSize: big ? 22 : 16, fontWeight: '700', marginRight: 6 }}>R$</Text>
+        <Text style={{ color: t.muted, fontSize: big ? 22 : 16, ...font('700'), marginRight: 6 }}>R$</Text>
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -273,7 +302,7 @@ export function MoneyField({
             flex: 1,
             color: t.textStrong,
             fontSize: big ? 28 : 16,
-            fontWeight: big ? '800' : '400',
+            ...font(big ? '800' : '600'),
             letterSpacing: big ? -0.8 : 0,
             paddingVertical: 13,
           }}
@@ -291,13 +320,16 @@ export function MoneyField({
  */
 export function CardTitle({ label, title, hint, right }: { label: string; title: string; hint?: string; right?: ReactNode }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Txt variant="label">{label}</Txt>
-        <Txt variant="h2">{title}</Txt>
-        {hint ? <Txt variant="small" style={{ marginTop: 2 }}>{hint}</Txt> : null}
+    <View style={{ gap: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt variant="label">{label}</Txt>
+          <Txt variant="h2">{title}</Txt>
+        </View>
+        {right}
       </View>
-      {right}
+      {/* A explicação usa a largura toda: ao lado do selo ela ficava espremida. */}
+      {hint ? <Txt variant="small">{hint}</Txt> : null}
     </View>
   );
 }
@@ -305,15 +337,103 @@ export function CardTitle({ label, title, hint, right }: { label: string; title:
 /**
  * Espaço que o conteúdo precisa deixar no topo.
  *
- * O cabeçalho é transparente (para o degradê atravessar a tela inteira), e
- * cabeçalho transparente fica *por cima* do conteúdo: sem esta folga, o
- * primeiro elemento nasce embaixo do título. O valor vem do próprio
- * navegador; o cálculo manual é só para telas sem cabeçalho nenhum.
+ * Nas abas não existe cabeçalho do sistema: o título é desenhado pela própria
+ * tela (ver `ScreenHeader`), então a folga é só a da barra de status. Nas
+ * telas empilhadas o cabeçalho é transparente e fica *por cima* do conteúdo;
+ * ali a altura vem do próprio navegador.
  */
 export function useHeaderPad(extra = space.md): number {
   const headerHeight = useContext(HeaderHeightContext);
   const insets = useSafeAreaInsets();
-  return (headerHeight ?? insets.top + 56) + extra;
+  return (headerHeight && headerHeight > 0 ? headerHeight : insets.top) + extra;
+}
+
+/**
+ * Faixa que cobre a barra de status. Sem ela, o conteúdo que rola por baixo
+ * se mistura com o relógio e a bateria. Só existe onde não há cabeçalho.
+ */
+export function StatusScrim() {
+  const t = useTheme();
+  const headerHeight = useContext(HeaderHeightContext);
+  const insets = useSafeAreaInsets();
+  if ((headerHeight && headerHeight > 0) || insets.top === 0) return null;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0 }}>
+      <View style={{ height: insets.top, backgroundColor: t.scrim }} />
+      <LinearGradient colors={[t.scrim, 'transparent']} style={{ height: 14 }} />
+    </View>
+  );
+}
+
+/**
+ * Título grande da tela, no lugar do cabeçalho do sistema: uma linha miúda de
+ * contexto em cima, o nome da tela embaixo e, à direita, as ações.
+ */
+export function ScreenHeader({ eyebrow, title, right }: { eyebrow?: string; title: string; right?: ReactNode }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 2 }}>
+      <View style={{ flex: 1 }}>
+        {eyebrow ? <Txt variant="muted" numberOfLines={1} style={{ fontWeight: '600' }}>{eyebrow}</Txt> : null}
+        <Txt variant="display" numberOfLines={1}>{title}</Txt>
+      </View>
+      {right ? <View style={{ flexDirection: 'row', gap: 8 }}>{right}</View> : null}
+    </View>
+  );
+}
+
+/** Botão redondo só com ícone (ações do cabeçalho). */
+export function IconButton({ icon, label, onPress, filled }: { icon: string; label: string; onPress: () => void; filled?: boolean }) {
+  const t = useTheme();
+  return (
+    <Press
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      style={{
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: filled ? t.primary : t.card,
+        borderWidth: 1,
+        borderColor: filled ? t.primary : t.cardBorder,
+      }}>
+      <Icon name={icon} size={20} color={filled ? t.primaryText : t.text} />
+    </Press>
+  );
+}
+
+/**
+ * Variação contra um período anterior: seta, percentual e cor.
+ * `goodWhenDown` inverte o sentido (gasto caindo é bom, saldo caindo é ruim).
+ */
+export function DeltaChip({ pct, goodWhenDown, onHero }: { pct: number; goodWhenDown?: boolean; onHero?: boolean }) {
+  const t = useTheme();
+  const up = pct > 0;
+  const flat = Math.abs(pct) < 0.5;
+  const good = flat ? true : goodWhenDown ? !up : up;
+  const color = onHero ? t.heroText : flat ? t.muted : good ? t.ok : t.over;
+  const text = `${Math.abs(pct) >= 999 ? '999+' : Math.abs(pct).toFixed(0)}%`;
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: radius.pill,
+        backgroundColor: onHero ? 'rgba(255,255,255,0.18)' : flat ? t.soft : `${color}26`,
+      }}>
+      <Icon name={flat ? 'remove' : up ? 'arrow-up' : 'arrow-down'} size={11} color={color} />
+      <Txt color={color} style={{ fontSize: 11.5, lineHeight: 16, fontWeight: '800' }}>{text}</Txt>
+    </View>
+  );
 }
 
 export function Screen({ children, padBottom = 150 }: { children: ReactNode; padBottom?: number }) {
@@ -329,6 +449,7 @@ export function Screen({ children, padBottom = 150 }: { children: ReactNode; pad
         showsVerticalScrollIndicator={false}>
         {children}
       </ScrollView>
+      <StatusScrim />
     </View>
   );
 }

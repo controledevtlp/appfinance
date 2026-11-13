@@ -1,4 +1,4 @@
-import { useColorScheme } from 'react-native';
+import { useColorScheme, type TextStyle } from 'react-native';
 
 /*
  * Visual "glassmorphism" em verde-sálvia sobre carvão.
@@ -68,6 +68,14 @@ const light = {
   chart: ['#2F6B52', '#C98A4B', '#3F8FA8', '#B06A77', '#7E9455', '#7C8A83'],
   tabBar: 'rgba(255,255,255,0.74)',
   blurTint: 'light' as 'light' | 'dark',
+  /** Faixa que protege a barra de status quando o conteúdo rola por baixo. */
+  scrim: 'rgba(244,247,244,0.96)',
+  /** Balão de valor que aparece ao tocar num gráfico. */
+  tooltipBg: '#16241D',
+  tooltipText: '#FFFFFF',
+  tooltipMuted: 'rgba(255,255,255,0.66)',
+  /** Degradê do medidor de saúde: do ruim ao bom. */
+  gauge: ['#C2563F', '#C98A2B', '#2F8F63'] as [string, string, string],
 };
 
 const dark: typeof light = {
@@ -118,6 +126,11 @@ const dark: typeof light = {
   chart: ['#A3CDB5', '#E0B06F', '#7FB8CF', '#D5909B', '#A9BC84', '#8E9A93'],
   tabBar: 'rgba(16,21,18,0.74)',
   blurTint: 'dark',
+  scrim: 'rgba(13,16,14,0.96)',
+  tooltipBg: '#EEF4F0',
+  tooltipText: '#0F1A15',
+  tooltipMuted: 'rgba(15,26,21,0.62)',
+  gauge: ['#E8836F', '#E0B470', '#5FD39B'],
 };
 
 export type Theme = typeof light;
@@ -137,3 +150,40 @@ export const glassShadow = (t: Theme, strength = 1) => ({
   shadowOffset: { width: 0, height: 10 * strength },
   elevation: 8 * strength,
 });
+
+/*
+ * Tipografia: Plus Jakarta Sans, carregada no layout raiz.
+ *
+ * Cada peso é um arquivo de fonte próprio. Por isso o peso entra pelo nome da
+ * família, e `fontWeight` vai sempre como 'normal': pedir negrito em cima de
+ * um arquivo que já é negrito faz o Android (e o navegador) engrossar a letra
+ * de novo, e o texto fica borrado.
+ */
+export const fonts = {
+  regular: 'PlusJakartaSans_400Regular',
+  medium: 'PlusJakartaSans_500Medium',
+  semi: 'PlusJakartaSans_600SemiBold',
+  bold: 'PlusJakartaSans_700Bold',
+  black: 'PlusJakartaSans_800ExtraBold',
+} as const;
+
+/** Família certa para um peso ("700", 700, "bold"...). */
+export function fontFamilyFor(weight?: TextStyle['fontWeight']): string {
+  const w = weight === 'bold' ? 700 : weight === 'normal' || weight === undefined ? 400 : Number(weight);
+  if (w >= 800) return fonts.black;
+  if (w >= 700) return fonts.bold;
+  if (w >= 600) return fonts.semi;
+  if (w >= 500) return fonts.medium;
+  return fonts.regular;
+}
+
+/** Estilo de fonte pronto para espalhar num `style`: `{...font('700')}`. */
+export function font(weight?: TextStyle['fontWeight']): TextStyle {
+  return { fontFamily: fontFamilyFor(weight), fontWeight: 'normal' };
+}
+
+/** Troca `fontWeight` por família em um estilo qualquer já achatado. */
+export function withFont<T extends TextStyle>(style: T): T {
+  if (style.fontFamily) return style;
+  return { ...style, ...font(style.fontWeight) };
+}

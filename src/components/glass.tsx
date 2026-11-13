@@ -88,6 +88,15 @@ export function Glass({
         style,
       ]}>
       {tone ? <LinearGradient colors={tone} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
+      {/* Cartão de destaque ganha dois discos translúcidos no canto: dão
+          profundidade ao degradê sem custar nada (são duas Views). */}
+      {tone ? (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <View style={{ position: 'absolute', right: -70, top: -90, width: 230, height: 230, borderRadius: 115, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+          <View style={{ position: 'absolute', right: -20, top: -120, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+          <View style={{ position: 'absolute', left: -60, bottom: -110, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,0,0,0.08)' }} />
+        </View>
+      ) : null}
       {/* brilho de vidro na borda de cima */}
       <LinearGradient
         colors={[t.cardShine, 'transparent']}

@@ -1,16 +1,29 @@
 import { router } from 'expo-router';
-import { View } from 'react-native';
-import { Donut, MonthlyBars, SpendingPace } from '@/components/charts';
+import { useMemo, useState } from 'react';
+import { useWindowDimensions, View } from 'react-native';
+import { Donut, Gauge, MonthlyBars, Ring, Sparkline, SpendingPace } from '@/components/charts';
+import { GradientPill } from '@/components/glass';
 import { Appear, Bar, MoneyTicker, Press } from '@/components/motion';
-import { Button, Card, CardTitle, Empty, fitFontSize, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
+import { Button, Card, CardTitle, DeltaChip, Empty, fitFontSize, Icon, MonthSwitcher, Screen, ScreenHeader, Txt, tap } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
-import { currentMonthKey, daysInMonth } from '@/engine/dates';
+import { samePeriodChange } from '@/engine/budget';
+import { currentMonthKey, daysInMonth, monthLabel } from '@/engine/dates';
 import { formatBRL, formatBRLShort } from '@/engine/money';
+import { greeting, verdict, type Mood } from '@/engine/voice';
 import { confirmDialog, notify } from '@/lib/dialog';
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
+
+const MOOD_ICON: Record<Mood, string> = {
+  pessimo: 'flame',
+  ruim: 'alert-circle',
+  atencao: 'warning',
+  bom: 'thumbs-up',
+  otimo: 'trophy',
+};
 
 export default function Painel() {
   const t = useTheme();
+  const { width: screenW } = useWindowDimensions();
   const {
     month, setMonth, summary, tips, health, series, transactions,
     loadDemo, settings, emergency, pace, budgetCents, recurringCents,
@@ -35,6 +48,23 @@ export default function Painel() {
   const last = pace[pace.length - 1];
   const paceDiff = last ? last.cumulativeCents - last.paceCents : 0;
 
+  const change = useMemo(() => samePeriodChange(transactions, month), [transactions, month]);
+  const say = useMemo(
+    () => verdict({ summary, paceDiffCents: paceDiff, paceCents: last?.paceCents ?? 0, isCurrent: isCurrent && budgetCents > 0 }),
+    [summary, paceDiff, last?.paceCents, isCurrent, budgetCents],
+  );
+  const moodColor = !say ? t.muted : say.mood === 'pessimo' || say.mood === 'ruim' ? t.over : say.mood === 'atencao' ? t.warning : t.ok;
+
+  // Mês em destaque no gráfico de barras. Volta para o último quando o mês da tela muda.
+  // A escolha vale só para o mês em que foi feita, então não precisa de efeito para "resetar".
+  const [picked, setPicked] = useState<{ month: string; index: number } | null>(null);
+  const barIndex = picked && picked.month === month ? Math.min(picked.index, series.length - 1) : series.length - 1;
+  const bar = series[barIndex];
+
+  // O saldo tem de caber numa linha em qualquer celular: a fonte encolhe com o tamanho do número.
+  const balanceText = formatBRL(summary.balanceCents);
+  const heroSize = Math.min(38, (screenW - 68) / (balanceText.length * 0.58));
+
   const tryDemo = () =>
     confirmDialog(
       'Quer ver com dados de mentira?',
@@ -43,14 +73,26 @@ export default function Painel() {
       { confirmText: 'Carregar' },
     );
 
+  const header = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <GradientPill radius={16} style={{ width: 46, height: 46, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="leaf" size={22} color={t.primaryText} />
+      </GradientPill>
+      <View style={{ flex: 1 }}>
+        <ScreenHeader eyebrow={`${greeting()}! Bora ver a grana`} title="Seu painel" />
+      </View>
+    </View>
+  );
+
   if (!hasData) {
     return (
       <Screen>
+        {header}
         <Appear>
           <Empty icon="rocket-outline" title="Bora começar" text="Me conta quanto você recebe por mês. Leva 30 segundos e já destrava tudo aqui dentro.">
             <View style={{ gap: 8, alignSelf: 'stretch' }}>
               <Button title="Quanto eu ganho por mês" icon="cash-outline" onPress={() => router.push('/renda')} />
-              <Button title="Importar extrato (CSV/OFX)" icon="cloud-upload-outline" variant="ghost" onPress={() => router.push('/importar')} />
+              <Button title="Importar extrato (CSV/OFX/PDF)" icon="cloud-upload-outline" variant="ghost" onPress={() => router.push('/importar')} />
               <Button title="Adicionar lançamento" icon="add" variant="ghost" onPress={() => router.push('/transacao')} />
               <Button title="Só dar uma olhada antes" icon="sparkles-outline" variant="ghost" onPress={tryDemo} />
             </View>
@@ -62,15 +104,41 @@ export default function Painel() {
 
   return (
     <Screen>
+      {header}
       <MonthSwitcher month={month} onChange={setMonth} />
 
       <Appear index={0}>
         <Card tone={[t.heroFrom, t.heroTo]} strength={1.3}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>Sobrou no mês</Txt>
-            <Icon name={summary.balanceCents >= 0 ? 'trending-up' : 'trending-down'} size={18} color={t.heroText} />
+            <Txt variant="label" color={t.heroText} style={{ opacity: 0.85 }}>Sobrou no mês</Txt>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.16)' }}>
+              <Icon name={summary.balanceCents >= 0 ? 'trending-up' : 'trending-down'} size={13} color={t.heroText} />
+              <Txt color={t.heroText} style={{ fontSize: 11, lineHeight: 16, fontWeight: '700' }}>{summary.balanceCents >= 0 ? 'no azul' : 'no vermelho'}</Txt>
+            </View>
           </View>
-          <MoneyTicker cents={summary.balanceCents} style={{ fontSize: 40, lineHeight: 48, fontWeight: '800', letterSpacing: -1.4, color: t.heroText }} />
+          <MoneyTicker cents={summary.balanceCents} style={{ fontSize: heroSize, lineHeight: heroSize * 1.22, fontWeight: '800', letterSpacing: -1.2, color: t.heroText }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ flex: 1, gap: 4 }}>
+              {change.pct !== null ? (
+                <>
+                  <View style={{ flexDirection: 'row' }}>
+                    <DeltaChip pct={change.pct} goodWhenDown onHero />
+                  </View>
+                  <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>
+                    {Math.abs(change.pct) < 0.5
+                      ? 'Gasto igual ao do mesmo período do mês passado.'
+                      : `de gasto a ${change.pct > 0 ? 'mais' : 'menos'} que no mesmo período do mês passado.`}
+                  </Txt>
+                </>
+              ) : (
+                <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>Mês que vem eu já comparo com esse aqui.</Txt>
+              )}
+            </View>
+            <View accessibilityLabel="Saldo dos últimos meses" style={{ alignItems: 'flex-end' }}>
+              <Sparkline values={series.map((p) => p.incomeCents - p.expenseCents)} color={t.heroText} width={92} height={38} />
+              <Txt color={t.heroText} style={{ fontSize: 9.5, lineHeight: 13, opacity: 0.7, fontWeight: '600' }}>saldo em 6 meses</Txt>
+            </View>
+          </View>
           <View style={{ flexDirection: 'row', gap: 7, marginTop: 2 }}>
             <HeroStat label="Entrou" value={formatBRL(summary.incomeCents).replace('R$ ', '')} drill={{ kind: 'income' }} />
             <HeroStat label="Saiu" value={formatBRL(summary.expenseCents).replace('R$ ', '')} drill={{ kind: 'expense' }} />
@@ -79,8 +147,36 @@ export default function Painel() {
         </Card>
       </Appear>
 
+      <Appear index={1}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <QuickAction icon="add" label="Lançar" onPress={() => router.push('/transacao')} />
+          <QuickAction icon="cloud-upload-outline" label="Extrato" onPress={() => router.push('/importar')} />
+          <QuickAction icon="cash-outline" label="Renda" onPress={() => router.push('/renda')} />
+          <QuickAction icon="trending-up" label="Simular" onPress={() => router.push('/investir')} />
+        </View>
+      </Appear>
+
+      {say ? (
+        <Appear index={2}>
+          <Press onPress={() => router.push('/dicas')} accessibilityLabel={`${say.title} ${say.text} Ver as dicas`}>
+            <Card style={{ borderColor: `${moodColor}66`, backgroundColor: `${moodColor}1C` }}>
+              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+                <View style={{ width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: `${moodColor}33` }}>
+                  <Icon name={MOOD_ICON[say.mood]} size={21} color={moodColor} />
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Txt variant="label" color={moodColor}>Papo reto</Txt>
+                  <Txt variant="h2" style={{ fontSize: 17, lineHeight: 23 }}>{say.title}</Txt>
+                  <Txt variant="muted" color={t.text}>{say.text}</Txt>
+                </View>
+              </View>
+            </Card>
+          </Press>
+        </Appear>
+      ) : null}
+
       {summary.baseIncomeCents === 0 ? (
-        <Appear index={1}>
+        <Appear index={2}>
           <Card>
             <Txt variant="h2">Falta me contar quanto você ganha</Txt>
             <Txt variant="muted">Sem isso eu não consigo dizer quanto dá pra gastar em cada coisa.</Txt>
@@ -90,24 +186,23 @@ export default function Painel() {
       ) : null}
 
       {isCurrent && budgetCents > 0 && pace.length > 1 ? (
-        <Appear index={1}>
+        <Appear index={3}>
           <Card>
             <CardTitle
               label="Ritmo do mês"
               title="Você tá indo rápido?"
-              hint="A linha cheia é o que você já gastou. A tracejada é o ritmo que cabe no seu mês."
-              right={<Icon name={paceDiff > 0 ? 'trending-up' : 'trending-down'} color={paceDiff > 0 ? t.over : t.ok} size={22} />}
+              hint="A linha cheia é o que você já gastou. A tracejada é o ritmo que cabe no mês. Passa o dedo no gráfico pra ver dia a dia."
+              right={
+                <View style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: `${paceDiff > 0 ? t.over : t.ok}26` }}>
+                  <Txt color={paceDiff > 0 ? t.over : t.ok} style={{ fontSize: 11, lineHeight: 15, fontWeight: '800' }}>{paceDiff > 0 ? 'rápido demais' : 'no ritmo'}</Txt>
+                </View>
+              }
             />
             <SpendingPace points={pace} totalDays={daysInMonth(month)} />
-            <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap' }}>
-              <Stat label={`Gasto até o dia ${last.day}`} value={formatBRL(last.cumulativeCents)} color={t.text} drill={{ kind: 'expense' }} />
-              <Stat label="Ritmo ideal" value={formatBRL(last.paceCents)} color={t.muted} />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Tile label={`Gasto até dia ${last.day}`} value={formatBRL(last.cumulativeCents)} color={paceDiff > 0 ? t.over : t.ok} drill={{ kind: 'expense' }} />
+              <Tile label="Ritmo ideal" value={formatBRL(last.paceCents)} color={t.muted} />
             </View>
-            <Txt variant="muted" color={paceDiff > 0 ? t.over : t.ok}>
-              {paceDiff > 0
-                ? `Você tá ${formatBRL(paceDiff)} na frente do ritmo. Segurando um pouco os gastos variáveis dá pra voltar pra linha.`
-                : `Você tá ${formatBRL(-paceDiff)} abaixo do ritmo. É isso aí, continua assim.`}
-            </Txt>
             {summary.projectedExpenseCents !== null ? (
               <Txt variant="small">Mantendo esse ritmo, o mês fecha em {formatBRL(summary.projectedExpenseCents)} de gasto.</Txt>
             ) : null}
@@ -116,23 +211,27 @@ export default function Painel() {
       ) : null}
 
       {health ? (
-        <Appear index={2}>
+        <Appear index={4}>
           <Card>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              <Donut size={104} thickness={11} centerSize={0.3} slices={[{ value: health.score, color: healthColor }, { value: 100 - health.score, color: 'transparent' }]} center={String(health.score)} />
-              <View style={{ flex: 1, gap: 3 }}>
-                <Txt variant="label">Como tá sua grana</Txt>
-                <Txt variant="title" color={healthColor} style={{ fontSize: 24, lineHeight: 30 }}>{health.label}</Txt>
-                <Txt variant="small">{isCurrent ? 'Nota parcial: o mês ainda não acabou, então ela tende a ser otimista.' : 'Nota de 0 a 100, somando 4 critérios.'}</Txt>
-              </View>
+            <CardTitle
+              label="Como tá sua grana"
+              title="Sua nota do mês"
+              hint={isCurrent ? 'Nota parcial: o mês ainda não acabou, então ela tende a ser otimista.' : 'De 0 a 100, somando os 4 critérios aqui de baixo.'}
+            />
+            <View style={{ alignItems: 'center' }}>
+              <Gauge score={health.score} size={Math.min(214, screenW - 96)}>
+                <Txt color={t.textStrong} style={{ fontSize: 44, lineHeight: 48, fontWeight: '800', letterSpacing: -1.6 }}>{health.score}</Txt>
+                <Txt variant="small" style={{ fontWeight: '600' }}>de 100</Txt>
+                <Txt color={healthColor} style={{ fontSize: 17, lineHeight: 23, fontWeight: '800', letterSpacing: -0.3, marginTop: 2 }}>{health.label}</Txt>
+              </Gauge>
             </View>
             {health.parts.map((p, i) => (
-              <View key={p.label} style={{ gap: 4 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Txt variant="muted">{p.label}</Txt>
-                  <Txt variant="muted">{p.points}/{p.max}</Txt>
+              <View key={p.label} style={{ gap: 5 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <Txt style={{ fontWeight: '600', fontSize: 14 }}>{p.label}</Txt>
+                  <Txt variant="muted" style={{ fontWeight: '700' }}>{p.points}<Txt variant="small">/{p.max}</Txt></Txt>
                 </View>
-                <Bar ratio={p.points / p.max} color={healthColor} height={6} delay={120 + i * 70} />
+                <Bar ratio={p.points / p.max} color={p.points / p.max >= 0.7 ? t.ok : p.points / p.max >= 0.4 ? t.warning : t.over} height={6} delay={120 + i * 70} />
                 <Txt variant="small">{p.detail}</Txt>
               </View>
             ))}
@@ -140,32 +239,41 @@ export default function Painel() {
         </Appear>
       ) : null}
 
-      <Appear index={3}>
+      <Appear index={5}>
         <Card>
-          <CardTitle label="A regra 50/30/20" title="Pra onde sua renda foi" hint="O risquinho em cada barra marca o ideal." />
-          {summary.groups.map((g, i) => {
-            const ratio = g.idealCents > 0 ? g.spentCents / g.idealCents : 0;
-            const bad = g.group !== 'poupanca' && ratio > 1;
-            return (
-              <Press key={g.group} onPress={() => router.push({ pathname: '/detalhe', params: { group: g.group } })} style={{ gap: 6 }} accessibilityLabel={`Ver gastos de ${g.label}`}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Txt style={{ fontWeight: '600' }}>{g.label} <Txt variant="muted">(ideal {g.idealPct}%)</Txt></Txt>
-                  <Txt variant="muted" color={bad ? t.over : undefined}>{g.actualPct.toFixed(0)}% da renda</Txt>
-                </View>
-                <Bar ratio={ratio} markerAt={1} color={bad ? t.over : groupColor[g.group]} delay={i * 90} />
-                <Txt variant="small">{formatBRL(g.spentCents)} de {formatBRL(g.idealCents)}{g.group === 'poupanca' ? ' (meta)' : ' (teto)'}</Txt>
-              </Press>
-            );
-          })}
+          <CardTitle label="A regra 50/30/20" title="Pra onde sua renda foi" hint="O anel cheio é o teto de cada grupo. Passou da volta, estourou." />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {summary.groups.map((g, i) => {
+              const ratio = g.idealCents > 0 ? g.spentCents / g.idealCents : 0;
+              const saving = g.group === 'poupanca';
+              const bad = !saving && ratio > 1;
+              return (
+                <Press
+                  key={g.group}
+                  onPress={() => router.push({ pathname: '/detalhe', params: { group: g.group } })}
+                  style={{ flex: 1 }}
+                  accessibilityLabel={`${g.label}: ${g.actualPct.toFixed(0)}% da renda, ideal ${g.idealPct}%. Ver gastos`}>
+                  <View style={{ alignItems: 'center', gap: 5 }}>
+                    <Ring ratio={ratio} color={groupColor[g.group]} overColor={saving ? undefined : t.over} size={Math.min(78, (screenW - 96) / 3)} delay={i * 110}>
+                      <Txt color={bad ? t.over : t.textStrong} style={{ fontSize: 17, lineHeight: 21, fontWeight: '800', letterSpacing: -0.5 }}>{g.actualPct.toFixed(0)}%</Txt>
+                    </Ring>
+                    <Txt numberOfLines={1} style={{ fontSize: 11.5, lineHeight: 16, fontWeight: '700' }}>{g.label}</Txt>
+                    <Txt variant="small" style={{ fontSize: 10.5, lineHeight: 14 }}>{saving ? 'meta' : 'teto'} {g.idealPct}%</Txt>
+                    <Txt numberOfLines={1} color={bad ? t.over : t.text} style={{ fontSize: fitFontSize(formatBRL(g.spentCents), 11.5, 9), lineHeight: 15, fontWeight: '700' }}>{formatBRL(g.spentCents)}</Txt>
+                  </View>
+                </Press>
+              );
+            })}
+          </View>
         </Card>
       </Appear>
 
       {top.length > 0 ? (
-        <Appear index={4}>
+        <Appear index={6}>
           <Card>
-            <CardTitle label="Top 5" title="Onde a grana foi parar" />
+            <CardTitle label="Top 5" title="Onde a grana foi parar" hint="Toca numa categoria pra ver os lançamentos." />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <Donut size={122} thickness={17} centerSize={0.2} slices={top} center={formatBRLShort(summary.expenseCents).replace('R$ ', '')} sub="gastos" />
+              <Donut size={126} thickness={17} slices={top} center={formatBRLShort(summary.expenseCents).replace('R$ ', '')} sub="gastos" />
               <View style={{ flex: 1, gap: 8 }}>
                 {top.map((s, i) => {
                   const share = s.value / Math.max(1, summary.expenseCents);
@@ -176,9 +284,9 @@ export default function Painel() {
                       onPress={() => s.categoryId && router.push({ pathname: '/detalhe', params: { categoryId: s.categoryId } })}
                       style={{ gap: 3 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: s.color }} />
-                        <Txt variant="small" style={{ flex: 1 }} numberOfLines={1}>{s.name}</Txt>
-                        <Txt variant="small" style={{ fontWeight: '700' }}>{Math.round(share * 100)}%</Txt>
+                        <View style={{ width: 8, height: 8, borderRadius: 3, backgroundColor: s.color }} />
+                        <Txt variant="small" color={t.text} style={{ flex: 1, fontWeight: '600' }} numberOfLines={1}>{s.name}</Txt>
+                        <Txt variant="small" color={t.text} style={{ fontWeight: '800' }}>{Math.round(share * 100)}%</Txt>
                       </View>
                       <Bar ratio={share} color={s.color} height={4} delay={200 + i * 60} />
                     </Press>
@@ -190,62 +298,82 @@ export default function Painel() {
         </Appear>
       ) : null}
 
-      <Appear index={5}>
+      <Appear index={7}>
         <Card>
-          <CardTitle label="Últimos 6 meses" title="Entrou × saiu" />
-          <MonthlyBars data={series} />
+          <CardTitle label="Últimos 6 meses" title="Entrou × saiu" hint="Toca num mês pra ver os números dele." />
+          <MonthlyBars data={series} selected={barIndex} onSelect={(i) => { tap(); setPicked({ month, index: i }); }} />
+          {bar ? (
+            <View style={{ gap: 7 }}>
+              <Txt variant="label">{monthLabel(bar.month)}</Txt>
+              <View style={{ flexDirection: 'row', gap: 7 }}>
+                <Tile label="Entrou" value={formatBRL(bar.incomeCents).replace('R$ ', '')} color={t.income} dot />
+                <Tile label="Saiu" value={formatBRL(bar.expenseCents).replace('R$ ', '')} color={t.expense} dot />
+                <Tile label="Sobrou" value={formatBRL(bar.incomeCents - bar.expenseCents).replace('R$ ', '')} color={bar.incomeCents - bar.expenseCents >= 0 ? t.text : t.over} />
+              </View>
+            </View>
+          ) : null}
         </Card>
       </Appear>
 
       {recurringCents > 0 ? (
-        <Appear index={6}>
+        <Appear index={8}>
           <Press onPress={() => router.push({ pathname: '/detalhe', params: { kind: 'recurring' } })}>
-          <Card>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Txt variant="h2">Gastos constantes</Txt>
-              <Txt variant="muted">{summary.baseIncomeCents > 0 ? `${Math.round((recurringCents / summary.baseIncomeCents) * 100)}% da renda` : ''}</Txt>
-            </View>
-            <MoneyTicker cents={recurringCents} style={{ fontSize: 30, lineHeight: 38, fontWeight: '800', letterSpacing: -0.8, color: t.textStrong }} />
-            <Bar ratio={summary.baseIncomeCents > 0 ? recurringCents / summary.baseIncomeCents : 0} color={t.necessidades} markerAt={0.5} />
-            <Txt variant="small">É o que sai todo mês, faça chuva ou faça sol. Abaixo de 50% da renda, o orçamento respira.</Txt>
-          </Card>
+            <Card>
+              <CardTitle
+                label="Todo mês"
+                title="Gastos constantes"
+                right={summary.baseIncomeCents > 0 ? <Txt variant="muted" style={{ fontWeight: '700' }}>{Math.round((recurringCents / summary.baseIncomeCents) * 100)}% da renda</Txt> : undefined}
+              />
+              <MoneyTicker cents={recurringCents} style={{ fontSize: 28, lineHeight: 36, fontWeight: '800', letterSpacing: -0.8, color: t.textStrong }} />
+              <Bar ratio={summary.baseIncomeCents > 0 ? recurringCents / summary.baseIncomeCents : 0} color={t.necessidades} markerAt={0.5} />
+              <Txt variant="small">É o que sai todo mês, faça chuva ou faça sol. Abaixo de 50% da renda (o risquinho), o orçamento respira.</Txt>
+            </Card>
           </Press>
         </Appear>
       ) : null}
 
-      <Appear index={7}>
+      <Appear index={9}>
         <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Txt variant="h2">Reserva de emergência</Txt>
-            <Txt variant="muted">{emergency.monthsCovered.toFixed(1).replace('.', ',')} de 6 meses</Txt>
-          </View>
+          <CardTitle
+            label="Colchão"
+            title="Reserva de emergência"
+            right={<Txt variant="muted" style={{ fontWeight: '700' }}>{emergency.monthsCovered.toFixed(1).replace('.', ',')} de 6 meses</Txt>}
+          />
           <Bar ratio={emergency.progress} color={t.poupanca} height={10} delay={120} />
           <Txt variant="small">{formatBRL(settings.emergencyBalanceCents)} guardados · meta {formatBRL(emergency.targetCents)}</Txt>
         </Card>
       </Appear>
 
       {topTips.length > 0 ? (
-        <Appear index={8}>
+        <Appear index={10}>
           <Card>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Txt variant="h2">Umas dicas pra você</Txt>
-              <Press onPress={() => router.push('/dicas')} hitSlop={8}>
-                <Txt variant="muted" color={t.primary} style={{ fontWeight: '700' }}>Ver todas</Txt>
-              </Press>
-            </View>
-            {topTips.map((tip) => (
-              <Press
-                key={tip.id}
-                disabled={!tip.categoryId}
-                onPress={() => tip.categoryId && router.push({ pathname: '/detalhe', params: { categoryId: tip.categoryId } })}
-                style={{ flexDirection: 'row', gap: 10 }}>
-                <Icon name={tip.severity === 'alerta' ? 'alert-circle' : tip.severity === 'atencao' ? 'warning' : 'information-circle'} color={tip.severity === 'alerta' ? t.over : tip.severity === 'atencao' ? t.warning : t.info} />
-                <View style={{ flex: 1 }}>
-                  <Txt style={{ fontWeight: '600' }}>{tip.title}</Txt>
-                  {tip.savingsCents > 0 ? <Txt variant="small">Dá pra guardar {formatBRL(tip.savingsCents)}/mês</Txt> : null}
-                </View>
-              </Press>
-            ))}
+            <CardTitle
+              label="Sem enrolação"
+              title="O que fazer agora"
+              right={
+                <Press onPress={() => router.push('/dicas')} hitSlop={8}>
+                  <Txt variant="muted" color={t.primary} style={{ fontWeight: '800' }}>Ver todas</Txt>
+                </Press>
+              }
+            />
+            {topTips.map((tip) => {
+              const c = tip.severity === 'alerta' ? t.over : tip.severity === 'atencao' ? t.warning : t.info;
+              return (
+                <Press
+                  key={tip.id}
+                  onPress={() => (tip.categoryId ? router.push({ pathname: '/detalhe', params: { categoryId: tip.categoryId } }) : router.push('/dicas'))}
+                  style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                  <View style={{ width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: `${c}26` }}>
+                    <Icon name={tip.severity === 'alerta' ? 'alert-circle' : tip.severity === 'atencao' ? 'warning' : 'information-circle'} size={18} color={c} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Txt style={{ fontWeight: '700', fontSize: 14, lineHeight: 20 }}>{tip.title}</Txt>
+                    {tip.savingsCents > 0 ? <Txt variant="small">Dá pra guardar {formatBRL(tip.savingsCents)}/mês</Txt> : null}
+                  </View>
+                  <Icon name="chevron-forward" size={15} color={t.muted} />
+                </Press>
+              );
+            })}
           </Card>
         </Appear>
       ) : null}
@@ -262,8 +390,8 @@ function HeroStat({ label, value, drill }: { label: string; value: string; drill
       accessibilityLabel={`Ver ${label}`}
       style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
       <View style={{ paddingHorizontal: 8, paddingVertical: 9, gap: 2 }}>
-        <Txt variant="small" color={t.heroText} style={{ opacity: 0.75, fontSize: 11 }}>{label}</Txt>
-        <Txt color={t.heroText} style={{ fontWeight: '800', fontSize: fitFontSize(value), lineHeight: 20, letterSpacing: -0.3 }} numberOfLines={1}>
+        <Txt variant="small" color={t.heroText} style={{ opacity: 0.78, fontSize: 11 }}>{label}</Txt>
+        <Txt color={t.heroText} style={{ fontWeight: '800', fontSize: fitFontSize(value, 14.5), lineHeight: 20, letterSpacing: -0.3 }} numberOfLines={1}>
           {value}
         </Txt>
       </View>
@@ -271,21 +399,44 @@ function HeroStat({ label, value, drill }: { label: string; value: string; drill
   );
 }
 
-/** Número solto do painel. Com `drill`, tocar abre a lista que formou o valor. */
-function Stat({ label, value, color, drill }: { label: string; value: string; color: string; drill?: Record<string, string> }) {
+/** Atalho redondo logo abaixo do saldo: as quatro coisas que mais se faz no app. */
+function QuickAction({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+  const t = useTheme();
+  return (
+    <Press
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      style={{ flex: 1 }}>
+      <View style={{ alignItems: 'center', gap: 6, paddingVertical: 11, borderRadius: radius.md + 2, backgroundColor: t.card, borderWidth: 1, borderColor: t.cardBorder }}>
+        <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: t.soft }}>
+          <Icon name={icon} size={19} color={t.primary} />
+        </View>
+        <Txt numberOfLines={1} style={{ fontSize: 11.5, lineHeight: 15, fontWeight: '700' }}>{label}</Txt>
+      </View>
+    </Press>
+  );
+}
+
+/** Caixinha com um número. Com `drill`, tocar abre a lista que formou o valor. */
+function Tile({ label, value, color, drill, dot }: { label: string; value: string; color: string; drill?: Record<string, string>; dot?: boolean }) {
   const t = useTheme();
   const body = (
-    <View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-        <Txt variant="label" style={{ fontSize: 10 }}>{label}</Txt>
-        {drill ? <Icon name="chevron-forward" size={11} color={t.muted} /> : null}
+    <View style={{ borderRadius: 14, paddingHorizontal: 9, paddingVertical: 9, gap: 2, backgroundColor: t.fieldBg, borderWidth: 1, borderColor: t.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        {dot ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color }} /> : null}
+        <Txt variant="small" numberOfLines={1} style={{ fontSize: 10.5, lineHeight: 14, flexShrink: 1 }}>{label}</Txt>
+        {drill ? <Icon name="chevron-forward" size={10} color={t.muted} /> : null}
       </View>
-      <Txt style={{ fontWeight: '800', fontSize: 17, letterSpacing: -0.4 }} color={color}>{value}</Txt>
+      <Txt numberOfLines={1} color={dot ? t.text : color} style={{ fontWeight: '800', fontSize: fitFontSize(value.replace('R$ ', ''), 14.5, 10), lineHeight: 20, letterSpacing: -0.3 }}>{value}</Txt>
     </View>
   );
-  if (!drill) return body;
+  if (!drill) return <View style={{ flex: 1 }}>{body}</View>;
   return (
-    <Press onPress={() => router.push({ pathname: '/detalhe', params: drill })} accessibilityLabel={`Ver ${label}`}>
+    <Press onPress={() => router.push({ pathname: '/detalhe', params: drill })} accessibilityLabel={`Ver ${label}`} style={{ flex: 1 }}>
       {body}
     </Press>
   );

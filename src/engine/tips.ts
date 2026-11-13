@@ -18,7 +18,7 @@ const ADVICE: Record<string, string[]> = {
   ],
   mercado: [
     'Vai uma vez por semana, com lista. Cada ida extra é dinheiro saindo sem você perceber.',
-    'Nunca vá com fome. Essa é regra de ouro, senão o carrinho enche de porcaria.',
+    'Nunca vá com fome, porra. Essa é regra de ouro, senão o carrinho enche de porcaria.',
     'Compara o preço por quilo e dá uma chance pra marca própria. O gosto é quase igual, o preço não.',
   ],
   transporte: [
@@ -39,12 +39,12 @@ const ADVICE: Record<string, string[]> = {
   dividas: [
     'Ataca primeiro a mais cara: rotativo do cartão e cheque especial. Os juros desses dois são absurdos.',
     'Liga e pede pra renegociar. Banco prefere receber menos do que não receber nada.',
-    'Nunca pague só o mínimo da fatura. É a armadilha mais cara que existe e você não sai dela sozinho.',
+    'Nunca pague só o mínimo da fatura, caralho. É a armadilha mais cara que existe e você não sai dela sozinho.',
   ],
   delivery: [
     'Define um teto e segura: dois pedidos por semana, por exemplo.',
     'Cozinha no domingo e congela. Durante a semana você só esquenta e economiza um dinheirão.',
-    'Deixa o delivery pro fim de semana. Na semana vira hábito, e hábito come salário.',
+    'Deixa o delivery pro fim de semana. Na semana vira hábito, e hábito come salário. Fogão não morde.',
   ],
   lazer: [
     'Separa um valor fixo por semana pra se divertir e respeita. Pode gastar, só não pode passar.',
@@ -56,7 +56,7 @@ const ADVICE: Record<string, string[]> = {
     'Desinstala os apps de loja e desliga as notificações de promoção. Promoção que você não vê não te pega.',
   ],
   assinaturas: [
-    'Lista todas e cancela sem dó o que você não abriu nos últimos 30 dias.',
+    'Lista todas e cancela sem dó o que você não abriu nos últimos 30 dias. Tá pagando pra não usar, seu trouxa.',
     'Divide plano família ou assina um por vez, revezando. Ninguém assiste cinco ao mesmo tempo.',
   ],
   cuidados: ['Espaça um pouco as idas ao salão e compara preço. Produto em refil sai bem mais barato.'],
@@ -156,10 +156,12 @@ export function generateTips(
       id: `over:${u.category.id}`,
       severity: u.ratio > 1.3 ? 'alerta' : 'atencao',
       categoryId: u.category.id,
-      title: `${u.category.name} tá ${pct}% acima do que cabe`,
+      title: u.ratio > 1.3 ? `Porra, ${u.category.name} estourou ${pct}%` : `${u.category.name} tá ${pct}% acima do que cabe`,
       message: isFixed
         ? `Você gastou ${formatBRL(u.spentCents)} e o que caberia na sua renda é ${formatBRL(u.limitCents)}. Como é conta fixa, esses ${formatBRL(gap)} a mais só somem renegociando.`
-        : `Você gastou ${formatBRL(u.spentCents)} e o que caberia é ${formatBRL(u.limitCents)}. Ajustando isso, sobram ${formatBRL(gap)} todo mês no seu bolso.`,
+        : u.ratio > 1.3
+          ? `Ô seu animal: você torrou ${formatBRL(u.spentCents)} onde cabiam ${formatBRL(u.limitCents)}. São ${formatBRL(gap)} indo pro ralo todo mês. Bora consertar essa merda.`
+          : `Você gastou ${formatBRL(u.spentCents)} e o que caberia é ${formatBRL(u.limitCents)}. Ajustando isso, sobram ${formatBRL(gap)} todo mês no seu bolso.`,
       savingsCents: gap,
       steps: [...plan, ...(ADVICE[u.category.id] ?? [])],
     });
@@ -188,8 +190,8 @@ export function generateTips(
         id: `growth:${u.category.id}`,
         severity: 'atencao',
         categoryId: u.category.id,
-        title: `${u.category.name} disparou esse mês`,
-        message: `Você já gastou ${formatBRL(u.spentCents)} contra ${formatBRL(before)} no mesmo período do mês passado. São ${formatBRL(diff)} a mais.`,
+        title: `Que porra é essa? ${u.category.name} disparou`,
+        message: `Você já gastou ${formatBRL(u.spentCents)} contra ${formatBRL(before)} no mesmo período do mês passado. São ${formatBRL(diff)} a mais, e eu duvido que você tenha percebido.`,
         savingsCents: diff,
         steps: [
           'Abre os lançamentos e vê o que mudou: foi uma compra única ou virou hábito novo?',
@@ -231,8 +233,8 @@ export function generateTips(
     tips.push({
       id: 'tarifas',
       severity: 'alerta',
-      title: `${formatBRL(fees)} jogados fora em juros e tarifa`,
-      message: 'Esse dinheiro não virou nada. Nadinha. E o pior: dá pra zerar quase tudo com umas ligações.',
+      title: `${formatBRL(fees)} jogados no lixo em juros e tarifa`,
+      message: 'Esse dinheiro não virou porra nenhuma. Você pagou pro banco ficar mais rico, seu trouxa. E o pior: dá pra zerar quase tudo com umas ligações.',
       savingsCents: feesNotCounted,
       steps: [
         'Paga a fatura do cartão sempre inteira. O rotativo é o juro mais caro que existe.',
@@ -253,7 +255,7 @@ export function generateTips(
       tips.push({
         id: 'poupanca',
         severity: 'alerta',
-        title: 'Opa, você tá gastando mais do que ganha',
+        title: 'Ô seu animal, você tá gastando mais do que ganha',
         message: `Os gastos passaram a renda em ${formatBRL(-saved)}. Se continuar assim vai dar merda: isso vira dívida, dívida vira juros, e aí complica pra valer.`,
         savingsCents: Math.max(0, target - saved),
         steps: [
@@ -268,7 +270,7 @@ export function generateTips(
       tips.push({
         id: 'poupanca',
         severity: 'atencao',
-        title: `Tá sobrando pouco: só ${summary.savingsRatePct.toFixed(0)}%`,
+        title: `Só ${summary.savingsRatePct.toFixed(0)}% sobrando? Tá de sacanagem`,
         message: `O ideal é guardar 20% do que entra, que daria ${formatBRL(target)}. Hoje sobram ${formatBRL(saved)}.`,
         savingsCents: Math.max(0, target - saved),
         steps: [
@@ -289,7 +291,7 @@ export function generateTips(
       tips.push({
         id: 'poupanca',
         severity: 'positivo',
-        title: `Mandou bem: ${summary.savingsRatePct.toFixed(0)}% guardados`,
+        title: `Aí sim, porra: ${summary.savingsRatePct.toFixed(0)}% guardados`,
         message: 'Tá na meta ou acima dela. É assim mesmo, segura esse ritmo.',
         savingsCents: 0,
         steps: ['Manda o que sobra pra reserva primeiro. Depois a gente pensa em prazo mais longo.'],
@@ -303,8 +305,8 @@ export function generateTips(
       id: 'dividas',
       severity: 'alerta',
       categoryId: 'dividas',
-      title: `Dívida tá comendo ${summary.debtRatioPct.toFixed(0)}% do seu salário`,
-      message: 'Passando de 30% o orçamento fica sem folga nenhuma. Aí qualquer imprevisto vira bola de neve.',
+      title: `Caralho: dívida comendo ${summary.debtRatioPct.toFixed(0)}% do seu salário`,
+      message: 'Passando de 30% o orçamento fica sem folga nenhuma. Aí qualquer imprevisto vira bola de neve e você se fode bonito.',
       savingsCents: 0,
       steps: ADVICE.dividas,
     });
@@ -317,7 +319,9 @@ export function generateTips(
       tips.push({
         id: 'reserva',
         severity: reserve.monthsCovered < 1 ? 'alerta' : 'atencao',
-        title: `Sua reserva dura ${reserve.monthsCovered.toFixed(1).replace('.', ',')} mês. Tá curto.`,
+        title: reserve.monthsCovered < 1
+          ? `Sua reserva dura ${reserve.monthsCovered.toFixed(1).replace('.', ',')} mês. Tá na merda.`
+          : `Sua reserva dura ${reserve.monthsCovered.toFixed(1).replace('.', ',')} mês. Tá curto.`,
         message: `O ideal é ter 6 meses de custo essencial guardado, que no seu caso dá ${formatBRL(reserve.targetCents)}. Separando ${formatBRL(reserve.suggestedMonthlyCents)} por mês, em um ano você chega lá.`,
         savingsCents: 0,
         steps: [
@@ -342,7 +346,7 @@ export function generateTips(
     tips.push({
       id: 'projecao',
       severity: 'atencao',
-      title: 'Do jeito que tá indo, o mês fecha no vermelho',
+      title: 'Do jeito que tá indo, vai dar merda no fim do mês',
       message: `Nesse ritmo você fecha em ${formatBRL(summary.projectedExpenseCents)}, que é ${Math.round((summary.projectedExpenseCents / base) * 100)}% da sua renda. O ideal é não passar de 80%.`,
       savingsCents: Math.max(0, summary.projectedExpenseCents - Math.round(base * 0.8)),
       steps: ['Segura a onda nos desejos até virar o mês e dá uma olhada no que tá amarelo e vermelho.'],
@@ -432,7 +436,7 @@ export function investmentTips(
       id: 'inv-parado',
       kind: 'investimento',
       severity: 'atencao',
-      title: `Sobraram ${formatBRL(leftover)} parados na conta`,
+      title: `${formatBRL(leftover)} mofando na conta, seu vacilão`,
       message: 'Dinheiro parado na conta corrente perde pra inflação todo mês, caladinho. Não dói na hora, mas dói.',
       savingsCents: 0,
       steps: [

@@ -93,7 +93,7 @@ Seção separada na aba Dicas, que acompanha a situação: enquanto a reserva n�
 É **informação geral para estudar, não recomendação** de investimento nem indicação de banco ou corretora, e cada bloco pede para conferir as regras atuais antes de investir — elas mudam.
 
 ## O jeito de falar
-O app conversa como um amigo que entende de grana, não como gerente de banco: "Opa, você tá gastando mais do que ganha", "Dá pra guardar R$ 710/mês", "Tá de boa". Quando o buraco é sério, ele fala sério — sem meias palavras. Os números e as regras continuam exatos; o que mudou foi o tom. Os avisos de que isso não é recomendação de investimento continuam onde precisam estar.
+O app conversa como um amigo sem filtro, não como gerente de banco: elogia quando você manda bem ("Aí sim, porra! Mandou bem demais.") e xinga quando você faz besteira ("Ô seu animal, vamos economizar, né?!"). A regra da casa está em `src/engine/voice.ts`: **palavrão só vem junto com um número e com o que fazer em seguida** — sem informação, é só grosseria. O cartão "Papo reto" do painel escolhe a frase indo do pior caso para o melhor (gastou mais do que entrou → ritmo acelerado → várias categorias estouradas → um deslize → tudo certo) e para no primeiro que se aplica. As frases variam de um dia para o outro, mas por uma semente do dia e não por sorteio, para a tela não trocar de frase a cada redesenho. O mesmo tom vale para as dicas e para as notificações. Os números e as regras continuam exatos, e os avisos de que isso não é recomendação de investimento continuam onde precisam estar.
 
 ## Visual (glassmorphism em verde-sálvia)
 Carvão quase preto com acento **verde-sálvia**, inspirado numa referência de dashboard financeiro. O acento aparece em pontos — pílula da aba ativa, quadradinho de ícone, cartão de saldo —, não espalhado pela tela: é o que separa "elegante" de "cansativo". Os brilhos do fundo são discretos de propósito; o que dá profundidade é o degradê dos cartões.
@@ -113,10 +113,13 @@ A comparação ordena pelo que sobra depois do imposto, e é aí que está o apr
 
 A taxa de referência (CDI/Selic) é digitada por você e fica guardada. Não cravei um número no código de propósito: a Selic muda, e um valor fixo envelheceria mentindo. O que o app não faz: buscar a taxa sozinho (precisaria de um serviço externo) e prometer rendimento — está escrito na tela que é simulação, não recomendação.
 
-## Cabeçalho transparente
-O cabeçalho é transparente para o degradê atravessar a tela inteira — e cabeçalho transparente fica **por cima** do conteúdo. Sem folga no topo, o primeiro elemento (o seletor de mês) nasce embaixo do título. Quem calcula essa folga é `useHeaderPad()`, que pega a altura real do cabeçalho pelo navegador e só cai para um cálculo manual em tela sem cabeçalho.
+## Cabeçalho
+Nas abas não existe cabeçalho do sistema: cada tela desenha o próprio título grande (`ScreenHeader`), com uma linha miúda de contexto em cima ("Boa noite! Bora ver a grana", "24 lançamentos · saldo R$ …") e as ações à direita. Ele rola junto com o conteúdo, e uma faixa (`StatusScrim`) cobre a barra de status para o texto não se misturar com o relógio. O mês é escolhido numa pílula; tocar no nome do mês volta para hoje.
 
-Os cabeçalhos também aparecem na versão web. Ficavam escondidos lá, e foi por isso que esse problema passou: os testes de tela não mostravam o caso que existe no celular.
+Nas telas empilhadas (lançamento, importar, renda, detalhe) o cabeçalho do sistema continua, transparente — e cabeçalho transparente fica **por cima** do conteúdo. A folga do topo sai de `useHeaderPad()`, que usa a altura informada pelo navegador nessas telas e a da barra de status nas abas.
+
+## Fonte
+Plus Jakarta Sans (`@expo-google-fonts/plus-jakarta-sans`), carregada no layout raiz antes de qualquer tela aparecer. Cada peso é um arquivo próprio, então o peso entra pelo **nome da família** e `fontWeight` vai sempre como `normal` — pedir negrito em cima de um arquivo que já é negrito faz o Android engrossar a letra de novo. O `Txt` faz essa troca sozinho (`withFont` em `src/theme`); texto cru (`Text`, `TextInput`, SVG) usa `font('700')` ou `fonts.bold`.
 
 ## Troca de abas
 Três coisas faziam a troca parecer cortada:
@@ -127,11 +130,21 @@ Três coisas faziam a troca parecer cortada:
 As telas ficam montadas (`detachInactiveScreens={false}`), então os cartões não repetem a animação de entrada toda vez que você volta para a aba.
 
 ## Gráficos e animações
-Barras e áreas com degradê, pontas arredondadas, valores escritos em cima das barras e hierarquia de texto (rótulo em caixa alta pequena, número grande e pesado). O valor principal do painel **conta até o número** em vez de aparecer pronto: no celular isso roda na thread de UI (`animatedProps` sobre um `TextInput`), no navegador cai para um contador simples, porque ali o Reanimated não anima texto.
+Curvas suaves com brilho, áreas em degradê e hierarquia de texto (rótulo em caixa alta pequena, número grande e pesado). O que cada gráfico faz:
 
-Todo gráfico tem **linhas de referência horizontais com o valor à esquerda**, numa escala "redonda" (1, 2, 2,5 ou 5 vezes uma potência de 10) para os números caírem em valores legíveis. Sem isso a pessoa vê a forma mas não sabe a ordem de grandeza, e o gráfico vira enfeite. O primeiro e o último rótulo do eixo horizontal são ancorados nas pontas, senão metade some na borda. Nas barras, o mês mais recente fica em destaque e os outros em meio-tom, para o olho achar o "agora" sem ler.
+- **Ritmo do mês e evolução do investimento** — linha suave (interpolação cúbica **monotônica**: a curva passa por todos os pontos sem inventar pico nem descer onde o dado só sobe), brilho por baixo, ponto pulsando no "agora" e **toque para ver o valor**: arrastar o dedo abre um balão com os números daquele dia ou mês.
+- **Nota do mês** — medidor em arco de 0 a 100 com degradê do vermelho ao verde; a cor na ponta já diz a faixa.
+- **50/30/20** — três anéis; passou do teto, a sobra vira uma segunda volta por cima.
+- **Entrou × saiu** — tocar num mês destaca as barras dele e mostra entrou, saiu e sobrou.
+- **Cartão de saldo** — minigráfico do saldo dos últimos 6 meses e a variação do gasto contra **o mesmo período** do mês passado (`samePeriodChange`: comparar o dia 12 com o mês passado inteiro diria sempre "caiu 60%").
 
-Tudo foi conferido em **320, 360 e 430px de largura** — o teste varre a tela procurando texto cortado. Onde o número não cabia, o tamanho da fonte é calculado pelo comprimento do texto (`fitFontSize`), porque `adjustsFontSizeToFit` do React Native só funciona no iOS.
+O brilho é a mesma curva desenhada três vezes (grossa e transparente → fina e sólida), não filtro de desfoque, que é caro e não existe em todo aparelho. O balão fica à esquerda do dedo, porque em curva acumulada o canto de cima à esquerda está sempre vazio; perto da borda ele sobe para cima do gráfico em vez de cobrir a linha.
+
+O valor principal do painel **conta até o número** em vez de aparecer pronto: no celular isso roda na thread de UI (`animatedProps` sobre um `TextInput`), no navegador cai para um contador simples, porque ali o Reanimated não anima texto.
+
+Todo gráfico tem **linhas de referência horizontais com o valor à esquerda**, numa escala "redonda" (1, 2, 2,5 ou 5 vezes uma potência de 10) para os números caírem em valores legíveis. Sem isso a pessoa vê a forma mas não sabe a ordem de grandeza, e o gráfico vira enfeite. O primeiro e o último rótulo do eixo horizontal são ancorados nas pontas, senão metade some na borda. Nas barras, um mês fica em destaque (o mais recente, até você tocar em outro) e os demais em meio-tom, para o olho achar o "agora" sem ler.
+
+Tudo foi conferido em **320, 360, 390 e 430px de largura**, nos temas claro e escuro — o teste varre a tela procurando texto cortado. Onde o número não cabia, o tamanho da fonte é calculado pelo comprimento do texto (`fitFontSize`), porque `adjustsFontSizeToFit` do React Native só funciona no iOS.
 
 Gráficos em SVG puro (`react-native-svg`), sem biblioteca de charts — são poucos elementos e o desenho é barato. As animações usam **Reanimated**, que roda na thread de UI: a rolagem não engasga enquanto o orçamento é recalculado, e nada anima quadro a quadro em JavaScript. As primitivas ficam em `src/components/motion.tsx` (entrada escalonada dos cartões, toque com resposta tátil, barras que crescem até o valor). Listas longas não recebem animação por item, de propósito. No celular, cada toque também dá um retorno tátil curto (`expo-haptics`). O Reanimated respeita "reduzir movimento" do sistema.
 

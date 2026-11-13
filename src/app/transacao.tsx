@@ -11,7 +11,7 @@ import { parseMoneyToCents } from '@/engine/money';
 import { countSameName, displayName, withAlias, withCategoryRule } from '@/engine/naming';
 import type { TxType } from '@/engine/types';
 import { confirmDialog, notify } from '@/lib/dialog';
-import { radius, useTheme } from '@/theme';
+import { font, radius, useTheme } from '@/theme';
 
 export default function Transacao() {
   const t = useTheme();
@@ -120,7 +120,7 @@ export default function Transacao() {
             onChangeText={onName}
             placeholder={type === 'income' ? 'tipo: Salário de novembro' : 'tipo: Mercado da semana'}
             placeholderTextColor={t.muted}
-            style={{ borderWidth: 1, borderColor: t.border, backgroundColor: t.bg, color: t.text, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 }}
+            style={{ borderWidth: 1, borderColor: t.border, backgroundColor: t.bg, color: t.text, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, ...font('500') }}
           />
           {existing && (renamed || recategorized) ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -204,7 +204,7 @@ export default function Transacao() {
             placeholderTextColor={t.muted}
             keyboardType="numbers-and-punctuation"
             inputMode="numeric"
-            style={{ borderWidth: 1, borderColor: t.border, backgroundColor: t.bg, color: t.text, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 }}
+            style={{ borderWidth: 1, borderColor: t.border, backgroundColor: t.bg, color: t.text, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, ...font('500') }}
           />
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Chip label="Hoje" onPress={() => setDay(0)} />

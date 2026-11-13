@@ -9,7 +9,7 @@ import { currentMonthKey, monthLabel, todayISO } from '@/engine/dates';
 import { formatBRL, parseMoneyToCents } from '@/engine/money';
 import type { IncomeSource } from '@/engine/types';
 import { notify } from '@/lib/dialog';
-import { radius, useTheme } from '@/theme';
+import { font, radius, useTheme } from '@/theme';
 
 interface Draft extends IncomeSource {
   /** Texto cru do campo, para não atrapalhar quem está digitando. */
@@ -129,7 +129,7 @@ export default function Renda() {
                     onChangeText={(v) => update(d.id, { label: v })}
                     placeholder="Nome (ex.: Salário)"
                     placeholderTextColor={t.muted}
-                    style={{ flex: 1, color: t.text, fontSize: 15, fontWeight: '600', paddingVertical: 6 }}
+                    style={{ flex: 1, color: t.text, fontSize: 15, ...font('600'), paddingVertical: 6 }}
                   />
                   {drafts.length > 1 ? (
                     <Press onPress={() => remove(d.id)} hitSlop={10} accessibilityLabel={`Remover ${d.label}`}>

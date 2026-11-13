@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, SectionList, TextInput, View } from 'react-native';
 import { Backdrop, useHasBackdrop } from '@/components/glass';
 import { Press } from '@/components/motion';
-import { CategoryBadge, Chip, Icon, MonthSwitcher, Txt, tap, useHeaderPad } from '@/components/ui';
+import { CategoryBadge, Chip, Icon, IconButton, MonthSwitcher, ScreenHeader, StatusScrim, Txt, tap, useHeaderPad } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { getCategory } from '@/engine/categories';
 import { normalize } from '@/engine/categorizer';
@@ -11,7 +11,7 @@ import { nameOf } from '@/engine/naming';
 import { dayLabel, monthKey } from '@/engine/dates';
 import { formatBRL } from '@/engine/money';
 import type { Transaction } from '@/engine/types';
-import { glassShadow, radius, useTheme } from '@/theme';
+import { font, glassShadow, radius, useTheme } from '@/theme';
 import { GradientPill } from '@/components/glass';
 
 type Filter = 'all' | 'expense' | 'income';
@@ -36,14 +36,22 @@ export default function Lancamentos() {
     return [...byDay.entries()].map(([date, data]) => ({ title: dayLabel(date), data }));
   }, [transactions, month, filter, query, settings]);
 
+  const shown = sections.reduce((a, s) => a + s.data.length, 0);
+  const net = sections.reduce((a, s) => a + s.data.reduce((b, x) => b + (x.categoryId === 'transferencia' ? 0 : x.type === 'income' ? x.amountCents : -x.amountCents), 0), 0);
+
   return (
     <View style={{ flex: 1 }}>
       {hasBackdrop ? null : <Backdrop />}
       <View style={{ padding: 16, gap: 10, paddingTop: padTop }}>
+        <ScreenHeader
+          eyebrow={shown ? `${shown} ${shown === 1 ? 'lançamento' : 'lançamentos'} · saldo ${formatBRL(net)}` : 'Tudo que entrou e saiu'}
+          title="Gastos"
+          right={<IconButton icon="cloud-upload-outline" label="Importar extrato" onPress={() => router.push('/importar')} />}
+        />
         <MonthSwitcher month={month} onChange={setMonth} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.fieldBg, borderRadius: radius.pill, borderWidth: 1, borderColor: t.border, paddingHorizontal: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.card, borderRadius: radius.pill, borderWidth: 1, borderColor: t.cardBorder, paddingHorizontal: 14 }}>
           <Icon name="search" size={18} color={t.muted} />
-          <TextInput value={query} onChangeText={setQuery} placeholder="Procurar um gasto ou categoria" placeholderTextColor={t.muted} style={{ flex: 1, paddingVertical: 10, color: t.text, fontSize: 15 }} />
+          <TextInput value={query} onChangeText={setQuery} placeholder="Procurar um gasto ou categoria" placeholderTextColor={t.muted} style={{ flex: 1, paddingVertical: 11, color: t.text, fontSize: 15, ...font('500') }} />
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Chip label="Todos" selected={filter === 'all'} onPress={() => setFilter('all')} />
@@ -58,7 +66,12 @@ export default function Lancamentos() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={<Txt variant="muted" style={{ textAlign: 'center', marginTop: 40 }}>Nada lançado nesse mês ainda.</Txt>}
-        renderSectionHeader={({ section }) => <Txt variant="small" style={{ marginTop: 14, marginBottom: 6, textTransform: 'capitalize' }}>{section.title}</Txt>}
+        renderSectionHeader={({ section }) => (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 7, paddingHorizontal: 4 }}>
+            <Txt variant="label">{section.title}</Txt>
+            <Txt variant="small" style={{ fontWeight: '700' }}>{formatBRL(section.data.reduce((a, x) => a + (x.categoryId === 'transferencia' ? 0 : x.type === 'income' ? x.amountCents : -x.amountCents), 0))}</Txt>
+          </View>
+        )}
         renderItem={({ item, index, section }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/transacao', params: { id: item.id } })}
@@ -68,12 +81,14 @@ export default function Lancamentos() {
               <Txt numberOfLines={1} style={{ fontWeight: '600' }}>{nameOf(item, settings)}</Txt>
               <Txt variant="small">{getCategory(item.categoryId).name}{item.source === 'import' ? ' · importado' : ''}</Txt>
             </View>
-            <Txt style={{ fontWeight: '700' }} color={item.categoryId === 'transferencia' ? t.muted : item.type === 'income' ? t.income : t.expense}>
+            <Txt style={{ fontWeight: '800', fontSize: 14.5 }} color={item.categoryId === 'transferencia' ? t.muted : item.type === 'income' ? t.income : t.expense}>
               {item.type === 'income' ? '+' : '-'}{formatBRL(item.amountCents)}
             </Txt>
           </Pressable>
         )}
       />
+
+      <StatusScrim />
 
       <Press
         accessibilityRole="button"

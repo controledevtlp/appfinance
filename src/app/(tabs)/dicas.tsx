@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Appear, Morph, Press, Reveal } from '@/components/motion';
-import { Card, Empty, Icon, MonthSwitcher, Screen, Txt } from '@/components/ui';
+import { Card, Empty, Icon, MonthSwitcher, Screen, ScreenHeader, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { formatBRL } from '@/engine/money';
 import { totalPotentialSavings } from '@/engine/tips';
@@ -19,6 +19,7 @@ export default function Dicas() {
 
   return (
     <Screen>
+      <ScreenHeader eyebrow="Papo reto, sem enrolação" title="Dicas" />
       <MonthSwitcher month={month} onChange={setMonth} />
 
       {transactions.length === 0 ? (
@@ -29,8 +30,8 @@ export default function Dicas() {
             <Appear index={0}>
             <Card tone={[t.heroFrom, t.heroTo]} strength={1.2}>
               <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>Seguindo os planos aqui de baixo, dá pra sobrar até</Txt>
-              <Txt variant="hero" color={t.heroText}>{formatBRL(total)}<Txt color={t.heroText} style={{ fontSize: 18, fontWeight: '700', opacity: 0.8 }}>/mês</Txt></Txt>
-              <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>Isso dá {formatBRL(total * 12)} no ano. Pensa no que você faria com esse dinheiro.</Txt>
+              <Txt variant="hero" color={t.heroText} style={{ fontSize: Math.min(38, 420 / formatBRL(total).length) }}>{formatBRL(total)}<Txt color={t.heroText} style={{ fontSize: 17, fontWeight: '700', opacity: 0.8 }}>/mês</Txt></Txt>
+              <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>Isso dá {formatBRL(total * 12)} no ano. Pensa na viagem que tá indo embora em bobagem.</Txt>
             </Card>
             </Appear>
           ) : null}
@@ -44,20 +45,28 @@ export default function Dicas() {
               <Appear key={tip.id} index={idx + 1}>
               <Press onPress={() => setOpen(expanded ? null : tip.id)} accessibilityRole="button" aria-expanded={expanded}>
                 <Morph>
-                <Card style={{ borderLeftWidth: 4, borderLeftColor: color[tip.severity] }}>
-                  <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                    <Icon name={icon[tip.severity]} color={color[tip.severity]} />
+                <Card style={{ borderColor: `${color[tip.severity]}55` }}>
+                  <View style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}>
+                    <View style={{ width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: `${color[tip.severity]}26` }}>
+                      <Icon name={icon[tip.severity]} color={color[tip.severity]} />
+                    </View>
                     <View style={{ flex: 1, gap: 4 }}>
                       <Txt style={{ fontWeight: '700' }}>{tip.title}</Txt>
                       <Txt variant="muted">{tip.message}</Txt>
-                      {tip.savingsCents > 0 ? <Txt variant="small" color={t.primary} style={{ fontWeight: '700' }}>Dá pra guardar {formatBRL(tip.savingsCents)}/mês</Txt> : null}
+                      {tip.savingsCents > 0 ? (
+                        <View style={{ flexDirection: 'row', marginTop: 2 }}>
+                          <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: t.soft }}>
+                            <Txt variant="small" color={t.primary} style={{ fontWeight: '800' }}>Dá pra guardar {formatBRL(tip.savingsCents)}/mês</Txt>
+                          </View>
+                        </View>
+                      ) : null}
                     </View>
                     <Icon name={expanded ? 'chevron-up' : 'chevron-down'} color={t.muted} size={18} />
                   </View>
                   {expanded ? (
                     <Reveal>
                     <View style={{ gap: 8, paddingTop: 4 }}>
-                      <Txt variant="small" style={{ fontWeight: '700' }}>COMO FAZER</Txt>
+                      <Txt variant="label">Como fazer</Txt>
                       {tip.steps.map((s, i) => (
                         <View key={i} style={{ flexDirection: 'row', gap: 8 }}>
                           <Txt color={t.primary} style={{ fontWeight: '700' }}>{i + 1}.</Txt>
@@ -73,7 +82,7 @@ export default function Dicas() {
               </Appear>
             );
           })}
-          {tips.length === 0 ? <Txt variant="muted">Nenhum alerta esse mês. Tá indo bem, continua assim!</Txt> : null}
+          {tips.length === 0 ? <Txt variant="muted">Nenhum alerta esse mês. Nem acredito: você não fez merda nenhuma. Continua assim!</Txt> : null}
 
           {investments.length > 0 ? (
             <>
@@ -92,9 +101,11 @@ export default function Dicas() {
                   <Appear key={tip.id} index={idx + 2}>
                     <Press onPress={() => setOpen(expanded ? null : tip.id)} accessibilityRole="button" aria-expanded={expanded}>
                       <Morph>
-                        <Card style={{ borderLeftWidth: 4, borderLeftColor: t.poupanca }}>
-                          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                            <Icon name="trending-up" color={t.poupanca} />
+                        <Card style={{ borderColor: `${t.poupanca}55` }}>
+                          <View style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}>
+                            <View style={{ width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: `${t.poupanca}26` }}>
+                              <Icon name="trending-up" color={t.poupanca} />
+                            </View>
                             <View style={{ flex: 1, gap: 4 }}>
                               <Txt style={{ fontWeight: '700' }}>{tip.title}</Txt>
                               <Txt variant="muted">{tip.message}</Txt>

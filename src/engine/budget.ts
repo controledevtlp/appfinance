@@ -308,3 +308,35 @@ export function emergencyStatus(
     suggestedMonthlyCents: Math.max(0, Math.ceil((targetCents - balanceCents) / 12)),
   };
 }
+
+export interface PeriodChange {
+  /** Gasto do dia 1 até o dia de corte, no mês escolhido. */
+  currentCents: number;
+  /** Gasto do dia 1 até o mesmo dia, no mês anterior. */
+  previousCents: number;
+  /** Variação em %. `null` quando não há base de comparação. */
+  pct: number | null;
+}
+
+/**
+ * Gasto deste mês contra o mesmo pedaço do mês passado.
+ *
+ * No mês corrente compara do dia 1 até hoje dos dois lados: comparar o dia 12
+ * de agora com o mês passado inteiro diria sempre "caiu 60%", o que é
+ * mentira. Em mês fechado, compara os dois meses inteiros.
+ */
+export function samePeriodChange(txs: Transaction[], month: string, now: Date = new Date()): PeriodChange {
+  const prev = shiftMonth(month, -1);
+  const cutoff = month === currentMonthKey(now) ? now.getDate() : 31;
+  const poupanca = new Set(CATEGORIES.filter((c) => c.group === 'poupanca').map((c) => c.id));
+  let currentCents = 0;
+  let previousCents = 0;
+  for (const t of txs) {
+    if (t.type !== 'expense' || t.categoryId === 'transferencia' || poupanca.has(t.categoryId)) continue;
+    if (Number(t.date.slice(8, 10)) > cutoff) continue;
+    const m = monthKey(t.date);
+    if (m === month) currentCents += t.amountCents;
+    else if (m === prev) previousCents += t.amountCents;
+  }
+  return { currentCents, previousCents, pct: previousCents > 0 ? ((currentCents - previousCents) / previousCents) * 100 : null };
+}

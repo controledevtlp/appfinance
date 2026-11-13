@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { GrowthChart } from '@/components/charts';
 import { Appear, Bar, Press } from '@/components/motion';
-import { Card, CardTitle, Chip, fitFontSize, Icon, MoneyField, Screen, Txt } from '@/components/ui';
+import { Card, CardTitle, Chip, fitFontSize, Icon, MoneyField, Screen, ScreenHeader, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import {
   compareProducts,
@@ -12,7 +12,7 @@ import {
   type Comparison,
 } from '@/engine/invest';
 import { formatBRL, parseMoneyToCents } from '@/engine/money';
-import { radius, useTheme } from '@/theme';
+import { font, radius, useTheme } from '@/theme';
 
 const PRAZOS = [
   { label: '1 ano', months: 12 },
@@ -56,6 +56,7 @@ export default function Investir() {
 
   return (
     <Screen>
+      <ScreenHeader eyebrow="Simulador de renda fixa" title="Investir" />
       <Appear index={0}>
         <Card>
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -100,7 +101,7 @@ export default function Investir() {
                   paddingHorizontal: 14,
                   paddingVertical: 12,
                   fontSize: 17,
-                  fontWeight: '700',
+                  ...font('700'),
                 }}
               />
               <Txt variant="h2">% a.a.</Txt>
@@ -119,7 +120,7 @@ export default function Investir() {
               <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>
                 {mode === 'ter' ? 'No fim você terá' : `Guardando ${formatBRL(needed)} por mês, você chega em`}
               </Txt>
-              <Txt variant="hero" color={t.heroText}>{formatBRL(main.netCents)}</Txt>
+              <Txt variant="hero" color={t.heroText} style={{ fontSize: Math.min(38, 470 / formatBRL(main.netCents).length) }}>{formatBRL(main.netCents)}</Txt>
               <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>
                 Já descontado o imposto de renda{main.taxRate > 0 ? ` de ${(main.taxRate * 100).toFixed(1).replace('.', ',')}%` : ''}.
               </Txt>
@@ -136,7 +137,7 @@ export default function Investir() {
               <CardTitle
                 label="Com o tempo"
                 title="Como o dinheiro cresce"
-                hint="A faixa de baixo é o que saiu do seu bolso. A de cima é o que os juros fizeram sozinhos."
+                hint="A faixa de baixo é o que saiu do seu bolso. A de cima é o que os juros fizeram sozinhos. Passa o dedo pra ver mês a mês."
               />
               <GrowthChart points={main.points} />
               <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -231,7 +232,7 @@ function ProductRow({ row, best }: { row: Comparison; best: boolean }) {
             <Txt style={{ fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>{row.name}</Txt>
             {best ? <Icon name="trophy" size={13} color={t.primary} /> : null}
           </View>
-          <Txt variant="small" numberOfLines={2}>
+          <Txt variant="small" numberOfLines={3}>
             {best ? row.detail : `${formatBRL(row.behindBestCents)} a menos que o primeiro`}
           </Txt>
         </View>

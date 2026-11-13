@@ -47,14 +47,14 @@ export async function syncRecurringNotifications(prefs: NotificationPrefs): Prom
     if (prefs.weeklySummary) {
       await Notifications.scheduleNotificationAsync({
         identifier: 'weekly-summary',
-        content: { title: 'Resumo da semana', body: 'Veja como estão seus gastos e as dicas para economizar.' },
+        content: { title: 'Bora ver o estrago da semana?', body: 'Entra aqui pra ver como foram os gastos e onde dá pra parar de fazer merda.' },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 1, hour: 19, minute: 0, channelId: CHANNEL },
       });
     }
     if (prefs.dailyReminder) {
       await Notifications.scheduleNotificationAsync({
         identifier: 'daily-reminder',
-        content: { title: 'Registrou seus gastos de hoje?', body: 'Leva 30 segundos e mantém o orçamento em dia.' },
+        content: { title: 'E aí, lançou os gastos de hoje?', body: 'Leva 30 segundos. Não me enrola, senão no fim do mês ninguém sabe pra onde a grana foi.' },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 20, minute: 30, channelId: CHANNEL },
       });
     }
@@ -83,10 +83,10 @@ export async function notifyBudgetAlerts(summary: MonthSummary, enabled: boolean
       const over = u.status === 'over';
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: over ? `${u.category.name}: limite estourado` : `${u.category.name}: ${Math.round(u.ratio * 100)}% do limite`,
+          title: over ? `Ô seu animal, estourou ${u.category.name}` : `${u.category.name} já tá em ${Math.round(u.ratio * 100)}% do limite`,
           body: over
-            ? `Você gastou ${formatBRL(u.spentCents)} de ${formatBRL(u.limitCents)}. Veja o plano de redução na aba Dicas.`
-            : `Já foram ${formatBRL(u.spentCents)} de ${formatBRL(u.limitCents)} neste mês. Segure um pouco.`,
+            ? `Você torrou ${formatBRL(u.spentCents)} onde cabiam ${formatBRL(u.limitCents)}. Vamos economizar, né?! Tem um plano te esperando na aba Dicas.`
+            : `Já foram ${formatBRL(u.spentCents)} de ${formatBRL(u.limitCents)} esse mês. Segura a onda antes que dê merda.`,
         },
         trigger: null,
       });

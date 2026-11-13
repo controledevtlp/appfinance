@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Switch, View } from 'react-native';
 import { Appear } from '@/components/motion';
-import { Button, Card, Field, Screen, Txt } from '@/components/ui';
+import { Button, Card, Field, Screen, ScreenHeader, Txt } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
 import { confirmDialog, notify } from '@/lib/dialog';
 import { formatBRL, parseMoneyToCents } from '@/engine/money';
@@ -63,6 +63,7 @@ export default function Ajustes() {
 
   return (
     <Screen>
+      <ScreenHeader eyebrow="Sua conta, do seu jeito" title="Ajustes" />
       <Appear index={0}>
       <Card>
         <Txt variant="h2">A base de tudo</Txt>

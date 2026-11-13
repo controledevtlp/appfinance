@@ -1,10 +1,18 @@
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 import { Backdrop } from '@/components/glass';
 import { Button, Card, Txt } from '@/components/ui';
 import { AppProvider, useApp } from '@/data/AppContext';
-import { useTheme } from '@/theme';
+import { fonts, useTheme } from '@/theme';
 
 function Gate() {
   const t = useTheme();
@@ -40,7 +48,8 @@ function Gate() {
         screenOptions={{
           headerTransparent: true,
           headerTintColor: t.textStrong,
-          headerTitleStyle: { fontWeight: '800', fontSize: 18 },
+          headerTitleStyle: { fontFamily: fonts.black, fontSize: 18 },
+          headerBackTitleStyle: { fontFamily: fonts.semi },
           headerShadowVisible: false,
           headerStyle: { backgroundColor: 'transparent' },
           contentStyle: { backgroundColor: t.bg },
@@ -61,6 +70,19 @@ function Gate() {
 }
 
 export default function RootLayout() {
+  const t = useTheme();
+  // A fonte do app. Enquanto ela não chega, a tela fica só com o fundo: melhor
+  // do que mostrar tudo na fonte do sistema e trocar com o app já aberto. Se o
+  // carregamento falhar, o app abre assim mesmo, com a fonte do aparelho.
+  const [loaded, failed] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
+  if (!loaded && !failed) return <View style={{ flex: 1, backgroundColor: t.bg }} />;
+
   return (
     <AppProvider>
       <Gate />

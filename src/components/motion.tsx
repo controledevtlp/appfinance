@@ -11,7 +11,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { radius, useTheme } from '@/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { radius, useTheme, withFont } from '@/theme';
 
 /*
  * Todas as animações daqui rodam na thread de UI (Reanimated), não na thread
@@ -142,7 +143,10 @@ export function Bar({
 
   return (
     <Animated.View style={{ height, backgroundColor: t.border, borderRadius: height }}>
-      <Animated.View style={[{ height, backgroundColor: color, borderRadius: height }, fill]} />
+      <Animated.View style={[{ height, borderRadius: height, overflow: 'hidden' }, fill]}>
+        {/* Degradê da cor para ela mesma mais clara: a barra ganha volume. */}
+        <LinearGradient colors={[`${color}B3`, color]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+      </Animated.View>
       {markerAt !== undefined ? (
         <Animated.View
           style={{
@@ -238,9 +242,11 @@ export function MoneyTicker({
   }, [cents, duration, value]);
 
   const animatedProps = useAnimatedProps(() => ({ text: formatCents(value.value) }) as never);
+  // Algarismos de largura fixa: o número não "dança" enquanto conta.
+  const flat = withFont({ ...(StyleSheet.flatten(style) ?? {}), fontVariant: ['tabular-nums'] } as TextStyle);
 
   if (Platform.OS === 'web') {
-    return <Animated.Text style={style as never}>{webText}</Animated.Text>;
+    return <Animated.Text style={flat as never}>{webText}</Animated.Text>;
   }
   return (
     <AnimatedInput
@@ -248,7 +254,7 @@ export function MoneyTicker({
       underlineColorAndroid="transparent"
       value={formatCents(cents)}
       animatedProps={animatedProps}
-      style={[{ padding: 0, margin: 0 }, style as never]}
+      style={[{ padding: 0, margin: 0 }, flat as never]}
     />
   );
 }

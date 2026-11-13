@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackdropProvider, GlassBar, GradientPill } from '@/components/glass';
 import { Press } from '@/components/motion';
 import { tap, type IconName } from '@/components/ui';
-import { glassShadow, radius, useTheme } from '@/theme';
+import { fonts, glassShadow, radius, useTheme } from '@/theme';
 
 const TABS: { name: string; label: string; icon: IconName; active: IconName }[] = [
   { name: 'index', label: 'Painel', icon: 'pie-chart-outline', active: 'pie-chart' },
@@ -71,7 +71,7 @@ function TabItem({
             <Ionicons name={meta.active} size={21} color={t.primaryText} />
           </Animated.View>
         </View>
-        <Animated.Text style={[{ fontSize: 10.5, lineHeight: 15, fontWeight: focused ? '800' : '600' }, labelColor]}>
+        <Animated.Text style={[{ fontSize: 10.5, lineHeight: 15, fontFamily: focused ? fonts.black : fonts.semi }, labelColor]}>
           {meta.label}
         </Animated.Text>
       </View>
@@ -142,7 +142,6 @@ function TabBar({ state, navigateToTab, insets }: TabBarProps) {
 }
 
 export default function TabLayout() {
-  const t = useTheme();
   return (
     // O fundo é desenhado uma vez só, aqui: fica parado enquanto o conteúdo
     // desliza, em vez de um degradê novo entrar junto com cada tela.
@@ -156,11 +155,9 @@ export default function TabLayout() {
           // Sem isto a troca de aba é um corte seco: o padrão é 'none'.
           animation: 'shift',
           transitionSpec: { animation: 'timing', config: { duration: 220 } },
-          headerTransparent: true,
-          headerTintColor: t.textStrong,
-          headerTitleStyle: { fontWeight: '800', fontSize: 19 },
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: 'transparent' },
+          // Sem cabeçalho do sistema: cada tela desenha o próprio título
+          // grande (ScreenHeader), que rola junto com o conteúdo.
+          headerShown: false,
           sceneStyle: { backgroundColor: 'transparent' },
         }}>
         {TABS.map((tab) => (
