@@ -104,6 +104,13 @@ Entrada e saída de dinheiro têm cores próprias (menta e coral), porque ali a 
 
 Os dois temas são de vidro: escuro = branco a 5,5% sobre carvão esverdeado com acento sálvia claro; claro = branco translúcido sobre off-white esverdeado com acento verde-floresta (sálvia não tem contraste para texto em fundo claro). Tudo sai de `src/theme/index.ts`, inclusive a paleta dos gráficos.
 
+## O caminho do investimento (`src/engine/advisor.ts`)
+A aba Investir começa por perguntas, não por números: **pra que é a grana** (reserva, comprar algo, aposentadoria, só render), **quando vai precisar**, **se pode precisar antes** e **quanto aguenta ver o valor balançar**. Das respostas sai um plano — em que *tipo* de aplicação cada fatia costuma ir para aquele objetivo, com o porquê, o cuidado e quanto cada fatia vira no fim — e só então a conta.
+
+As regras são as de manual, e estão todas testadas: reserva é sempre liquidez diária; quem pode precisar a qualquer hora não entra em nada com carência; até 2 anos, nada que oscila; entre LCI/LCA e CDB ganha quem deixa mais **no bolso** naquele prazo (o que muda com o prazo, porque o imposto do CDB cai); prazo longo ganha Tesouro IPCA+; renda variável só entra em mais de 5 anos, para quem disse que aguenta, e nunca em dinheiro com data para ser usado. Quem quer travar dinheiro sem ter reserva leva um puxão de orelha antes.
+
+Três limites, de propósito: só **tipos** de produto, nunca banco, corretora ou título específico; a tela diz que é o caminho de manual e simulação, não recomendação profissional; e **nada rende na conta mais do que dá pra garantir** — a fatia de IPCA+ e a de renda variável entram rendendo o CDI, então o total mostrado é um piso honesto, não uma vitrine. No modo "quanto guardar", o aporte sai por busca binária sobre a própria simulação, já que o plano mistura taxas e impostos diferentes.
+
 ## Simulador de investimentos (`src/engine/invest.ts`)
 Matemática pura e testada: juros compostos com aporte mensal, tabela regressiva do IR (22,5% / 20% / 17,5% / 15%) e a regra da poupança (trava em 0,5% ao mês com a Selic acima de 8,5%).
 
@@ -132,11 +139,14 @@ As telas ficam montadas (`detachInactiveScreens={false}`), então os cartões n�
 ## Gráficos e animações
 Curvas suaves com brilho, áreas em degradê e hierarquia de texto (rótulo em caixa alta pequena, número grande e pesado). O que cada gráfico faz:
 
+- **Previsão no ritmo do mês** — a linha continua pontilhada de hoje até o último dia, mostrando onde o mês vai fechar. O número vem do motor (contas fixas que ainda vão vencer + gasto variável no ritmo atual), não de uma régua esticada sobre a linha, que contaria o aluguel de novo todo dia.
 - **Ritmo do mês e evolução do investimento** — linha suave (interpolação cúbica **monotônica**: a curva passa por todos os pontos sem inventar pico nem descer onde o dado só sobe), brilho por baixo, ponto pulsando no "agora" e **toque para ver o valor**: arrastar o dedo abre um balão com os números daquele dia ou mês.
 - **Nota do mês** — medidor em arco de 0 a 100 com degradê do vermelho ao verde; a cor na ponta já diz a faixa.
 - **50/30/20** — três anéis; passou do teto, a sobra vira uma segunda volta por cima.
 - **Entrou × saiu** — tocar num mês destaca as barras dele e mostra entrou, saiu e sobrou.
 - **Cartão de saldo** — minigráfico do saldo dos últimos 6 meses e a variação do gasto contra **o mesmo período** do mês passado (`samePeriodChange`: comparar o dia 12 com o mês passado inteiro diria sempre "caiu 60%").
+
+A linha se desenha pelo traço (`strokeDashoffset`), **não por recorte animado**: `ClipPath` animado funciona no navegador mas não atualiza no celular, e a linha ficava escondida para sempre. O espaço dos valores do eixo é calculado pelo rótulo mais largo ("300 mil" não cabe onde cabe "6 mil").
 
 O brilho é a mesma curva desenhada três vezes (grossa e transparente → fina e sólida), não filtro de desfoque, que é caro e não existe em todo aparelho. O balão fica à esquerda do dedo, porque em curva acumulada o canto de cima à esquerda está sempre vazio; perto da borda ele sobe para cima do gráfico em vez de cobrir a linha.
 

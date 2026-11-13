@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
+  FadeIn,
   useAnimatedProps,
   useSharedValue,
   withDelay,
@@ -9,7 +10,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import Svg, { Circle, ClipPath, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import type { DayPoint, SeriesPoint } from '@/engine/budget';
 import { monthLabel } from '@/engine/dates';
 import { formatBRL, formatBRLShort } from '@/engine/money';
@@ -36,8 +37,17 @@ const ACircle = Animated.createAnimatedComponent(Circle);
 const APath = Animated.createAnimatedComponent(Path);
 const ARect = Animated.createAnimatedComponent(Rect);
 
-/** Espaço à esquerda para os valores do eixo. */
-const GUTTER = 36;
+/** Espaço mínimo à esquerda para os valores do eixo. */
+const MIN_GUTTER = 36;
+
+/**
+ * Espaço à esquerda que os valores do eixo precisam de verdade. "300 mil"
+ * é mais largo que "6 mil": com folga fixa, o rótulo maior saía pela borda.
+ */
+function gutterFor(ticks: number[]): number {
+  const longest = Math.max(...ticks.map((v) => axisLabel(v).length));
+  return Math.max(MIN_GUTTER, Math.ceil(longest * 5.7) + 12);
+}
 const PAD_RIGHT = 10;
 const AXIS_H = 22;
 
@@ -124,7 +134,7 @@ function useSvgId(prefix: string): string {
 }
 
 /** Linhas de referência + valores à esquerda, comuns aos gráficos de área e barra. */
-function Grid({ ticks, top, plotTop, plotH, width, t }: { ticks: number[]; top: number; plotTop: number; plotH: number; width: number; t: Theme }) {
+function Grid({ ticks, top, plotTop, plotH, width, gutter, t }: { ticks: number[]; top: number; plotTop: number; plotH: number; width: number; gutter: number; t: Theme }) {
   return (
     <G>
       {ticks.map((value) => {
@@ -132,7 +142,7 @@ function Grid({ ticks, top, plotTop, plotH, width, t }: { ticks: number[]; top: 
         return (
           <G key={value}>
             <Line
-              x1={GUTTER}
+              x1={gutter}
               y1={y}
               x2={width - PAD_RIGHT}
               y2={y}
@@ -141,7 +151,7 @@ function Grid({ ticks, top, plotTop, plotH, width, t }: { ticks: number[]; top: 
               strokeDasharray={value === 0 ? undefined : '2 6'}
               opacity={value === 0 ? 1 : 0.8}
             />
-            <SvgText x={GUTTER - 7} y={y + 3.5} textAnchor="end" fontSize={9.5} fontFamily={fonts.semi} fill={t.faint}>
+            <SvgText x={gutter - 7} y={y + 3.5} textAnchor="end" fontSize={9.5} fontFamily={fonts.semi} fill={t.faint}>
               {axisLabel(value)}
             </SvgText>
           </G>
@@ -152,16 +162,35 @@ function Grid({ ticks, top, plotTop, plotH, width, t }: { ticks: number[]; top: 
 }
 
 /**
- * Linha com brilho: a mesma curva desenhada três vezes, da mais grossa e
- * transparente à mais fina e sólida. Dá o efeito de néon sem filtro de
- * desfoque, que é caro e não existe em todo aparelho.
+ * Comprimento "por cima" de uma curva: soma dos deslocamentos em x e em y.
+ * Como a curva é monotônica, o comprimento real nunca passa disso — e é o
+ * que o traço precisa para a linha começar 100% escondida e terminar 100%
+ * à mostra.
  */
-function GlowLine({ d, color, stroke, width = 3 }: { d: string; color: string; stroke?: string; width?: number }) {
+function dashLength(pts: XY[]): number {
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.abs(pts[i].x - pts[i - 1].x) + Math.abs(pts[i].y - pts[i - 1].y);
+  return Math.max(1, Math.ceil(total));
+}
+
+/**
+ * Linha com brilho que se desenha da esquerda para a direita: a mesma curva
+ * três vezes, da mais grossa e transparente à mais fina e sólida. Dá o
+ * efeito de néon sem filtro de desfoque, que é caro e não existe em todo
+ * aparelho.
+ *
+ * A animação é pelo traço (`strokeDashoffset`), e não por recorte: recorte
+ * animado (ClipPath) funciona no navegador mas não atualiza no celular, e a
+ * linha ficava escondida para sempre.
+ */
+function GlowLine({ d, length, draw, color, width = 3 }: { d: string; length: number; draw: SharedValue<number>; color: string; width?: number }) {
+  const props = useAnimatedProps(() => ({ strokeDashoffset: length * (1 - draw.value) }));
+  const common = { d, stroke: color, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round', strokeDasharray: length, animatedProps: props } as const;
   return (
     <G>
-      <Path d={d} stroke={color} strokeWidth={width + 9} opacity={0.1} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d={d} stroke={color} strokeWidth={width + 4} opacity={0.18} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d={d} stroke={stroke ?? color} strokeWidth={width} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <APath {...common} strokeWidth={width + 9} opacity={0.1} />
+      <APath {...common} strokeWidth={width + 4} opacity={0.18} />
+      <APath {...common} strokeWidth={width} />
     </G>
   );
 }
@@ -466,11 +495,25 @@ export function Gauge({ score, size = 210, thickness = 15, children }: { score: 
 /**
  * Ritmo do mês: quanto você já gastou, dia a dia, contra o ritmo que caberia
  * no orçamento. A linha cheia acima da tracejada quer dizer "gastando rápido".
+ *
+ * Com `projectedCents`, a linha continua pontilhada de hoje até o último dia:
+ * é onde o mês vai parar se nada mudar. A previsão vem do motor (custo fixo
+ * que ainda vai vencer + gasto variável no ritmo atual), não de uma régua
+ * esticada sobre a linha — esticar contaria o aluguel de novo todo dia.
  */
-export function SpendingPace({ points, totalDays, height = 210 }: { points: DayPoint[]; totalDays: number; height?: number }) {
+export function SpendingPace({
+  points,
+  totalDays,
+  projectedCents,
+  height = 216,
+}: {
+  points: DayPoint[];
+  totalDays: number;
+  projectedCents?: number | null;
+  height?: number;
+}) {
   const t = useTheme();
   const fillId = useSvgId('paceFill');
-  const clipId = useSvgId('paceClip');
   const [width, setWidth] = useState(0);
   const draw = useSharedValue(0);
   const last = points[points.length - 1];
@@ -480,24 +523,30 @@ export function SpendingPace({ points, totalDays, height = 210 }: { points: DayP
   useEffect(() => {
     draw.value = 0;
     draw.value = withTiming(1, { duration: 1100, easing: EASE });
-  }, [points.length, draw]);
+  }, [points.length, width, draw]);
 
-  const padTop = 16;
+  const padTop = 22;
   const plotH = height - AXIS_H - padTop;
   const budget = Math.round((last?.paceCents ?? 0) * (totalDays / Math.max(1, last?.day ?? 1)));
-  const { top, ticks } = niceScale(Math.max(1, last?.cumulativeCents ?? 0, budget));
-  const plotW = Math.max(1, width - GUTTER - PAD_RIGHT);
+  // Só existe previsão se ainda falta mês pela frente; e ela nunca fica abaixo do que já foi gasto.
+  const forecast =
+    last && projectedCents != null && last.day < totalDays ? Math.max(projectedCents, last.cumulativeCents) : null;
+  const forecastColor = forecast !== null && forecast > budget ? t.over : t.ok;
+  const { top, ticks } = niceScale(Math.max(1, last?.cumulativeCents ?? 0, budget, forecast ?? 0));
+  const gutter = gutterFor(ticks);
+  const plotW = Math.max(1, width - gutter - PAD_RIGHT);
 
-  const x = (day: number) => GUTTER + ((day - 1) / Math.max(1, totalDays - 1)) * plotW;
+  const x = (day: number) => gutter + ((day - 1) / Math.max(1, totalDays - 1)) * plotW;
   const y = (cents: number) => padTop + plotH - (cents / top) * plotH;
 
-  const line = smoothPath(points.map((p) => ({ x: x(p.day), y: y(p.cumulativeCents) })));
+  const xy = points.map((p) => ({ x: x(p.day), y: y(p.cumulativeCents) }));
+  const line = smoothPath(xy);
+  const length = dashLength(xy);
   const area = points.length ? `${line} L${x(last.day).toFixed(1)},${y(0).toFixed(1)} L${x(1).toFixed(1)},${y(0).toFixed(1)} Z` : '';
-  const reveal = useAnimatedProps(() => ({ width: Math.max(0.01, (plotW + 24) * draw.value) }));
 
   const scrub = useScrub((px) => {
     if (!points.length) return null;
-    const day = Math.round(((px - GUTTER) / plotW) * Math.max(1, totalDays - 1)) + 1;
+    const day = Math.round(((px - gutter) / plotW) * Math.max(1, totalDays - 1)) + 1;
     return Math.max(0, Math.min(points.length - 1, day - 1));
   });
   const hit = scrub.index !== null ? points[scrub.index] : null;
@@ -509,25 +558,40 @@ export function SpendingPace({ points, totalDays, height = 210 }: { points: DayP
   return (
     <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height }}>
       {width > 0 && points.length > 0 ? (
-        <>
+        <Animated.View entering={FadeIn.duration(350)} style={{ flex: 1 }}>
           <Svg width={width} height={height}>
             <Defs>
               <LinearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={lineColor} stopOpacity={0.42} />
+                <Stop offset="0%" stopColor={lineColor} stopOpacity={0.4} />
                 <Stop offset="70%" stopColor={lineColor} stopOpacity={0.08} />
                 <Stop offset="100%" stopColor={lineColor} stopOpacity={0} />
               </LinearGradient>
-              <ClipPath id={clipId}>
-                <ARect x={GUTTER - 12} y={0} height={height} animatedProps={reveal} />
-              </ClipPath>
             </Defs>
-            <Grid ticks={ticks} top={top} plotTop={padTop} plotH={plotH} width={width} t={t} />
+            <Grid ticks={ticks} top={top} plotTop={padTop} plotH={plotH} width={width} gutter={gutter} t={t} />
             {/* ritmo ideal: gastar o orçamento por igual até o fim do mês */}
             <Line x1={x(1)} y1={y(budget / totalDays)} x2={x(totalDays)} y2={y(budget)} stroke={t.muted} strokeWidth={1.5} strokeDasharray="6 5" opacity={0.75} />
-            <G clipPath={`url(#${clipId})`}>
-              <Path d={area} fill={`url(#${fillId})`} />
-              <GlowLine d={line} color={lineColor} />
-            </G>
+            <Path d={area} fill={`url(#${fillId})`} />
+            {forecast !== null ? (
+              <G>
+                {/* previsão: de hoje até o último dia, pontilhada */}
+                <Line
+                  x1={x(last.day)}
+                  y1={y(last.cumulativeCents)}
+                  x2={x(totalDays)}
+                  y2={y(forecast)}
+                  stroke={forecastColor}
+                  strokeWidth={2.5}
+                  strokeDasharray="1 7"
+                  strokeLinecap="round"
+                  opacity={0.9}
+                />
+                <Circle cx={x(totalDays)} cy={y(forecast)} r={5} fill={t.bg} stroke={forecastColor} strokeWidth={2.5} />
+                <SvgText x={x(totalDays) - 9} y={y(forecast) - 9} textAnchor="end" fontSize={10.5} fontFamily={fonts.bold} fill={forecastColor}>
+                  {`vai dar ${axisLabel(forecast)}`}
+                </SvgText>
+              </G>
+            ) : null}
+            <GlowLine d={line} length={length} draw={draw} color={lineColor} />
             {hit ? (
               <Crosshair x={x(hit.day)} y={y(hit.cumulativeCents)} top={padTop} bottom={padTop + plotH} color={lineColor} t={t} />
             ) : (
@@ -553,7 +617,7 @@ export function SpendingPace({ points, totalDays, height = 210 }: { points: DayP
               ]}
             />
           ) : null}
-        </>
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -583,9 +647,10 @@ export function MonthlyBars({
   const [width, setWidth] = useState(0);
   const grow = useSharedValue(0);
   const { top, ticks } = niceScale(Math.max(1, ...data.flatMap((d) => [d.incomeCents, d.expenseCents])));
+  const gutter = gutterFor(ticks);
   const padTop = 10;
   const plotH = height - AXIS_H - padTop;
-  const slot = (width - GUTTER - PAD_RIGHT) / Math.max(1, data.length);
+  const slot = (width - gutter - PAD_RIGHT) / Math.max(1, data.length);
   const barW = Math.max(6, Math.min(16, slot * 0.3));
   const active = selected ?? data.length - 1;
 
@@ -609,9 +674,9 @@ export function MonthlyBars({
                 <Stop offset="100%" stopColor={t.expense} stopOpacity={0.35} />
               </LinearGradient>
             </Defs>
-            <Grid ticks={ticks} top={top} plotTop={padTop} plotH={plotH} width={width} t={t} />
+            <Grid ticks={ticks} top={top} plotTop={padTop} plotH={plotH} width={width} gutter={gutter} t={t} />
             {data.map((d, i) => {
-              const cx = GUTTER + slot * i + slot / 2;
+              const cx = gutter + slot * i + slot / 2;
               const current = i === active;
               const hi = (d.incomeCents / top) * plotH;
               const he = (d.expenseCents / top) * plotH;
@@ -634,7 +699,7 @@ export function MonthlyBars({
               style={StyleSheet.absoluteFill}
               onStartShouldSetResponder={() => true}
               onResponderRelease={(e) => {
-                const i = Math.floor((e.nativeEvent.locationX - GUTTER) / slot);
+                const i = Math.floor((e.nativeEvent.locationX - gutter) / slot);
                 onSelect(Math.max(0, Math.min(data.length - 1, i)));
               }}
             />
@@ -667,29 +732,29 @@ export function GrowthChart({
   const t = useTheme();
   const totalId = useSvgId('growthTotal');
   const inId = useSvgId('growthIn');
-  const clipId = useSvgId('growthClip');
   const [width, setWidth] = useState(0);
   const draw = useSharedValue(0);
   const last = points[points.length - 1];
   const { top, ticks } = niceScale(Math.max(1, last?.balanceCents ?? 1));
+  const gutter = gutterFor(ticks);
   const months = Math.max(1, last?.month ?? 1);
 
   useEffect(() => {
     draw.value = 0;
     draw.value = withTiming(1, { duration: 1000, easing: EASE });
-  }, [points.length, top, draw]);
+  }, [points.length, top, width, draw]);
 
   const padTop = 14;
   const plotH = height - AXIS_H - padTop;
-  const plotW = Math.max(1, width - GUTTER - PAD_RIGHT);
-  const x = (m: number) => GUTTER + (m / months) * plotW;
+  const plotW = Math.max(1, width - gutter - PAD_RIGHT);
+  const x = (m: number) => gutter + (m / months) * plotW;
   const y = (c: number) => padTop + plotH - (c / top) * plotH;
 
-  const line = (key: 'balanceCents' | 'investedCents') => smoothPath(points.map((p) => ({ x: x(p.month), y: y(p[key]) })));
+  const xyOf = (key: 'balanceCents' | 'investedCents') => points.map((p) => ({ x: x(p.month), y: y(p[key]) }));
+  const line = (key: 'balanceCents' | 'investedCents') => smoothPath(xyOf(key));
   const area = (key: 'balanceCents' | 'investedCents') =>
     `${line(key)} L${x(months).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
 
-  const reveal = useAnimatedProps(() => ({ width: Math.max(0.01, (plotW + 24) * draw.value) }));
   const marks = [0, Math.round(months / 2), months];
   const label = (m: number) => (m === 0 ? 'hoje' : m % 12 === 0 ? `${m / 12} ano${m / 12 > 1 ? 's' : ''}` : `${m}m`);
   const longLabel = (m: number) => {
@@ -702,7 +767,7 @@ export function GrowthChart({
 
   const scrub = useScrub((px) => {
     if (points.length < 2) return null;
-    const m = ((px - GUTTER) / plotW) * months;
+    const m = ((px - gutter) / plotW) * months;
     let best = 0;
     for (let i = 1; i < points.length; i++) if (Math.abs(points[i].month - m) < Math.abs(points[best].month - m)) best = i;
     return best;
@@ -712,7 +777,7 @@ export function GrowthChart({
   return (
     <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height }}>
       {width > 0 && points.length > 1 ? (
-        <>
+        <Animated.View entering={FadeIn.duration(350)} style={{ flex: 1 }}>
           <Svg width={width} height={height}>
             <Defs>
               <LinearGradient id={totalId} x1="0" y1="0" x2="0" y2="1">
@@ -723,17 +788,12 @@ export function GrowthChart({
                 <Stop offset="0%" stopColor={t.primary} stopOpacity={0.5} />
                 <Stop offset="100%" stopColor={t.primary} stopOpacity={0.1} />
               </LinearGradient>
-              <ClipPath id={clipId}>
-                <ARect x={GUTTER - 12} y={0} height={height} animatedProps={reveal} />
-              </ClipPath>
             </Defs>
-            <Grid ticks={ticks} top={top} plotTop={padTop} plotH={plotH} width={width} t={t} />
-            <G clipPath={`url(#${clipId})`}>
-              <Path d={area('balanceCents')} fill={`url(#${totalId})`} />
-              <Path d={area('investedCents')} fill={`url(#${inId})`} />
-              <Path d={line('investedCents')} stroke={t.primary} strokeWidth={2} fill="none" strokeDasharray="5 4" />
-              <GlowLine d={line('balanceCents')} color={t.income} width={2.8} />
-            </G>
+            <Grid ticks={ticks} top={top} plotTop={padTop} plotH={plotH} width={width} gutter={gutter} t={t} />
+            <Path d={area('balanceCents')} fill={`url(#${totalId})`} />
+            <Path d={area('investedCents')} fill={`url(#${inId})`} />
+            <Path d={line('investedCents')} stroke={t.primary} strokeWidth={2} fill="none" strokeDasharray="5 4" />
+            <GlowLine d={line('balanceCents')} length={dashLength(xyOf('balanceCents'))} draw={draw} color={t.income} width={2.8} />
             {hit ? (
               <>
                 <Crosshair x={x(hit.month)} y={y(hit.balanceCents)} top={padTop} bottom={padTop + plotH} color={t.income} t={t} />
@@ -763,7 +823,7 @@ export function GrowthChart({
               ]}
             />
           ) : null}
-        </>
+        </Animated.View>
       ) : null}
     </View>
   );

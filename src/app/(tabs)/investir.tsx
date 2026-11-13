@@ -1,24 +1,38 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { TextInput, View } from 'react-native';
 import { GrowthChart } from '@/components/charts';
 import { Appear, Bar, Press } from '@/components/motion';
-import { Card, CardTitle, Chip, fitFontSize, Icon, MoneyField, Screen, ScreenHeader, Txt } from '@/components/ui';
+import { Card, CardTitle, Chip, fitFontSize, Icon, MoneyField, Screen, ScreenHeader, Txt, tap } from '@/components/ui';
 import { useApp } from '@/data/AppContext';
-import {
-  compareProducts,
-  defaultProducts,
-  monthlyNeeded,
-  simulate,
-  type Comparison,
-} from '@/engine/invest';
+import { buildPlan, monthlyForPlan, simulatePlan, type Access, type Goal, type Nerve } from '@/engine/advisor';
+import { compareProducts, defaultProducts, type Comparison } from '@/engine/invest';
 import { formatBRL, parseMoneyToCents } from '@/engine/money';
 import { font, radius, useTheme } from '@/theme';
 
 const PRAZOS = [
+  { label: '6 meses', months: 6 },
   { label: '1 ano', months: 12 },
   { label: '2 anos', months: 24 },
   { label: '5 anos', months: 60 },
   { label: '10 anos', months: 120 },
+];
+
+const GOALS: { id: Goal; icon: string; label: string; hint: string; months: number }[] = [
+  { id: 'reserva', icon: 'shield-checkmark', label: 'Reserva de emergência', hint: 'Pra quando der merda', months: 12 },
+  { id: 'compra', icon: 'airplane', label: 'Comprar algo', hint: 'Viagem, carro, casa', months: 24 },
+  { id: 'aposentadoria', icon: 'hourglass', label: 'Aposentadoria', hint: 'Lá na frente', months: 120 },
+  { id: 'render', icon: 'trending-up', label: 'Só fazer render', hint: 'Sem data certa', months: 60 },
+];
+
+const ACCESS: { id: Access; icon: string; label: string; hint: string }[] = [
+  { id: 'qualquer-hora', icon: 'flash', label: 'Posso precisar', hint: 'Quero sacar quando quiser' },
+  { id: 'pode-travar', icon: 'lock-closed', label: 'Pode ficar preso', hint: 'Só mexo no fim do prazo' },
+];
+
+const NERVES: { id: Nerve; icon: string; label: string; hint: string }[] = [
+  { id: 'nenhum', icon: 'bed', label: 'Não quero ver cair', hint: 'Prefiro dormir tranquilo' },
+  { id: 'pouco', icon: 'pulse', label: 'Aguento um pouco', hint: 'Se for por um tempo' },
+  { id: 'aguento', icon: 'rocket', label: 'Aguento o tranco', hint: 'Se render mais no fim' },
 ];
 
 const toInput = (cents: number) => (cents > 0 ? (cents / 100).toFixed(2).replace('.', ',') : '');
@@ -27,12 +41,17 @@ export default function Investir() {
   const t = useTheme();
   const { settings, saveSettings, summary, emergency } = useApp();
 
+  // O caminho: quatro respostas. Enquanto o objetivo não é escolhido, não há conta.
+  const [goal, setGoal] = useState<Goal | null>(null);
+  const [months, setMonths] = useState(24);
+  const [access, setAccess] = useState<Access>('pode-travar');
+  const [nerve, setNerve] = useState<Nerve>('pouco');
+
   const [mode, setMode] = useState<'ter' | 'guardar'>('ter');
   const [initial, setInitial] = useState(() => toInput(settings.emergencyBalanceCents));
   // Começa sugerindo a meta de 20% da renda: é o número que o app já defende.
   const [monthly, setMonthly] = useState(() => toInput(Math.round(summary.baseIncomeCents * 0.2)));
   const [target, setTarget] = useState(() => toInput(emergency.targetCents));
-  const [months, setMonths] = useState(24);
   const [cdi, setCdi] = useState(String(settings.cdiAnnualPct).replace('.', ','));
 
   const cdiPct = Math.max(0, Number(cdi.replace(',', '.')) || 0);
@@ -40,99 +59,224 @@ export default function Investir() {
   const monthlyCents = Math.max(0, parseMoneyToCents(monthly) ?? 0);
   const targetCents = Math.max(0, parseMoneyToCents(target) ?? 0);
 
+  const chooseGoal = (g: (typeof GOALS)[number]) => {
+    tap();
+    setGoal(g.id);
+    // Cada objetivo já vem com o prazo mais comum dele; dá pra mudar no passo seguinte.
+    setMonths(g.months);
+    if (g.id === 'reserva') setAccess('qualquer-hora');
+  };
+
+  const isReserve = goal === 'reserva';
+  // A pergunta do sobe-e-desce só faz sentido para dinheiro travado por mais de 2 anos.
+  const asksNerve = !!goal && !isReserve && access === 'pode-travar' && months > 24;
+
+  const plan = useMemo(
+    () => (goal ? buildPlan({ goal, months, access, nerve }, cdiPct, { reserveMonths: emergency.monthsCovered }) : null),
+    [goal, months, access, nerve, cdiPct, emergency.monthsCovered],
+  );
   const needed = useMemo(
-    () => monthlyNeeded(targetCents, initialCents, months, cdiPct),
-    [targetCents, initialCents, months, cdiPct],
+    () => (plan && mode === 'guardar' ? monthlyForPlan(plan, targetCents, initialCents, months) : 0),
+    [plan, mode, targetCents, initialCents, months],
   );
   const aporte = mode === 'ter' ? monthlyCents : needed;
-
-  const base = { initialCents, monthlyCents: aporte, months };
-  const main = useMemo(() => simulate({ ...base, annualPct: cdiPct }), [initialCents, aporte, months, cdiPct]);
-  const rows = useMemo(() => compareProducts(defaultProducts(cdiPct), base), [initialCents, aporte, months, cdiPct]);
+  const main = useMemo(
+    () => (plan ? simulatePlan(plan, { initialCents, monthlyCents: aporte, months }) : null),
+    [plan, initialCents, aporte, months],
+  );
+  const rows = useMemo(
+    () => compareProducts(defaultProducts(cdiPct), { initialCents, monthlyCents: aporte, months }),
+    [initialCents, aporte, months, cdiPct],
+  );
 
   const saveCdi = () => {
     if (cdiPct > 0 && cdiPct !== settings.cdiAnnualPct) void saveSettings({ ...settings, cdiAnnualPct: cdiPct });
   };
 
+  const hasMoney = aporte > 0 || initialCents > 0;
+  let step = 0;
+
   return (
     <Screen>
-      <ScreenHeader eyebrow="Simulador de renda fixa" title="Investir" />
+      <ScreenHeader eyebrow="Me conta o plano que eu faço a conta" title="Investir" />
+
       <Appear index={0}>
         <Card>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Chip label="Quanto vou ter" selected={mode === 'ter'} onPress={() => setMode('ter')} />
-            <Chip label="Quanto guardar" selected={mode === 'guardar'} onPress={() => setMode('guardar')} />
-          </View>
-
-          <MoneyField label="Já tenho guardado" value={initial} onChangeText={setInitial} />
-          {mode === 'ter' ? (
-            <MoneyField label="Vou guardar por mês" value={monthly} onChangeText={setMonthly} />
-          ) : (
-            <MoneyField label="Quero chegar em" value={target} onChangeText={setTarget} />
-          )}
-
-          <View style={{ gap: 7 }}>
-            <Txt variant="label">Por quanto tempo</Txt>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {PRAZOS.map((p) => (
-                <Chip key={p.months} label={p.label} selected={months === p.months} onPress={() => setMonths(p.months)} />
-              ))}
-            </View>
-          </View>
-
-          <View style={{ gap: 7 }}>
-            <Txt variant="label">Taxa de referência (CDI) ao ano</Txt>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <TextInput
-                value={cdi}
-                onChangeText={setCdi}
-                onBlur={saveCdi}
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-                placeholder="10,5"
-                placeholderTextColor={t.faint}
-                style={{
-                  width: 110,
-                  borderWidth: 1,
-                  borderColor: t.border,
-                  backgroundColor: t.fieldBg,
-                  color: t.textStrong,
-                  borderRadius: radius.md,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  fontSize: 17,
-                  ...font('700'),
-                }}
-              />
-              <Txt variant="h2">% a.a.</Txt>
-            </View>
-            <Txt variant="small">
-              A Selic muda de tempos em tempos. Dá uma conferida na taxa de hoje e ajusta aqui — eu guardo pra você.
-            </Txt>
+          <StepTitle n={++step} title="Pra que é essa grana?" hint="É isso que decide onde ela deve ficar." />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {GOALS.map((g) => (
+              <Option key={g.id} half icon={g.icon} label={g.label} hint={g.hint} selected={goal === g.id} onPress={() => chooseGoal(g)} />
+            ))}
           </View>
         </Card>
       </Appear>
 
-      {aporte > 0 || initialCents > 0 ? (
+      {goal ? (
         <>
           <Appear index={1}>
+            <Card>
+              <StepTitle
+                n={++step}
+                title={isReserve ? 'Em quanto tempo quer montar?' : 'Quando vai precisar dela?'}
+                hint={isReserve ? 'É o prazo pra juntar; depois ela fica lá, rendendo.' : 'Quanto mais tempo, mais opção de onde colocar.'}
+              />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {PRAZOS.map((p) => (
+                  <Chip key={p.months} label={p.label} selected={months === p.months} onPress={() => setMonths(p.months)} />
+                ))}
+              </View>
+            </Card>
+          </Appear>
+
+          {!isReserve ? (
+            <Appear index={2}>
+              <Card>
+                <StepTitle n={++step} title="Pode precisar sacar antes?" hint="Dinheiro travado rende mais, mas não sai na hora do aperto." />
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {ACCESS.map((a) => (
+                    <Option key={a.id} half icon={a.icon} label={a.label} hint={a.hint} selected={access === a.id} onPress={() => { tap(); setAccess(a.id); }} />
+                  ))}
+                </View>
+              </Card>
+            </Appear>
+          ) : null}
+
+          {asksNerve ? (
+            <Appear index={3}>
+              <Card>
+                <StepTitle n={++step} title="E se o valor balançar no caminho?" hint="Em prazo longo, o que rende mais também oscila mais." />
+                <View style={{ gap: 8 }}>
+                  {NERVES.map((x) => (
+                    <Option key={x.id} icon={x.icon} label={x.label} hint={x.hint} selected={nerve === x.id} onPress={() => { tap(); setNerve(x.id); }} />
+                  ))}
+                </View>
+              </Card>
+            </Appear>
+          ) : null}
+
+          <Appear index={4}>
+            <Card>
+              <StepTitle n={++step} title="E os valores?" />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Chip label="Quanto vou ter" selected={mode === 'ter'} onPress={() => setMode('ter')} />
+                <Chip label="Quanto guardar" selected={mode === 'guardar'} onPress={() => setMode('guardar')} />
+              </View>
+              <MoneyField label="Já tenho guardado" value={initial} onChangeText={setInitial} />
+              {mode === 'ter' ? (
+                <MoneyField label="Vou guardar por mês" value={monthly} onChangeText={setMonthly} />
+              ) : (
+                <MoneyField label="Quero chegar em" value={target} onChangeText={setTarget} />
+              )}
+              <View style={{ gap: 7 }}>
+                <Txt variant="label">Taxa de referência (CDI) ao ano</Txt>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TextInput
+                    value={cdi}
+                    onChangeText={setCdi}
+                    onBlur={saveCdi}
+                    keyboardType="decimal-pad"
+                    inputMode="decimal"
+                    placeholder="10,5"
+                    placeholderTextColor={t.faint}
+                    style={{
+                      width: 110,
+                      borderWidth: 1,
+                      borderColor: t.border,
+                      backgroundColor: t.fieldBg,
+                      color: t.textStrong,
+                      borderRadius: radius.md,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      fontSize: 17,
+                      ...font('700'),
+                    }}
+                  />
+                  <Txt variant="h2">% a.a.</Txt>
+                </View>
+                <Txt variant="small">A Selic muda de tempos em tempos. Dá uma conferida na taxa de hoje e ajusta aqui — eu guardo pra você.</Txt>
+              </View>
+            </Card>
+          </Appear>
+        </>
+      ) : (
+        <Appear index={1}>
+          <Card>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+              <Icon name="arrow-up-circle" color={t.primary} size={22} />
+              <Txt variant="muted" style={{ flex: 1 }}>Escolhe aí em cima pra que é o dinheiro. Com mais umas perguntinhas eu te digo onde colocar e quanto vai dar.</Txt>
+            </View>
+          </Card>
+        </Appear>
+      )}
+
+      {plan && main && hasMoney ? (
+        <>
+          <Appear index={5}>
             <Card tone={[t.heroFrom, t.heroTo]} strength={1.3}>
-              <Txt variant="label" color={t.heroText} style={{ opacity: 0.8 }}>
-                {mode === 'ter' ? 'No fim você terá' : `Guardando ${formatBRL(needed)} por mês, você chega em`}
+              <Txt variant="label" color={t.heroText} style={{ opacity: 0.85 }}>
+                {mode === 'ter' ? 'Seguindo esse caminho, no fim você terá' : `Guardando ${formatBRL(needed)} por mês, você chega em`}
               </Txt>
               <Txt variant="hero" color={t.heroText} style={{ fontSize: Math.min(38, 470 / formatBRL(main.netCents).length) }}>{formatBRL(main.netCents)}</Txt>
               <Txt variant="small" color={t.heroText} style={{ opacity: 0.85 }}>
-                Já descontado o imposto de renda{main.taxRate > 0 ? ` de ${(main.taxRate * 100).toFixed(1).replace('.', ',')}%` : ''}.
+                No seu bolso, já descontado o imposto de renda. É uma conta conservadora: nada aqui rende mais do que dá pra garantir.
               </Txt>
               <View style={{ flexDirection: 'row', gap: 7, marginTop: 2 }}>
-                <HeroBox label="Você colocou" value={formatBRL(main.investedCents).replace('R$ ', '')} />
-                <HeroBox label="Os juros deram" value={formatBRL(main.interestCents).replace('R$ ', '')} />
+                <HeroBox label="Colocou" value={formatBRL(main.investedCents).replace('R$ ', '')} />
+                <HeroBox label="Juros" value={formatBRL(main.interestCents).replace('R$ ', '')} />
                 <HeroBox label="Imposto" value={formatBRL(main.taxCents).replace('R$ ', '')} />
               </View>
             </Card>
           </Appear>
 
-          <Appear index={2}>
+          <Appear index={6}>
+            <Card>
+              <CardTitle label="Onde eu colocaria" title={plan.title} hint={plan.summary} />
+              {plan.slices.length > 1 ? (
+                <View style={{ flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
+                  {plan.slices.map((sl, i) => (
+                    <View key={sl.id} style={{ flex: sl.sharePct, backgroundColor: t.chart[i] }} />
+                  ))}
+                </View>
+              ) : null}
+              {main.perSlice.map(({ slice, netCents, initialCents: ini, monthlyCents: mon }, i) => (
+                <View key={slice.id} style={{ gap: 6, paddingTop: i === 0 ? 0 : 12, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: t.border }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ minWidth: 50, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 11, alignItems: 'center', backgroundColor: `${t.chart[i]}33` }}>
+                      <Txt color={t.chart[i]} style={{ fontSize: 14, lineHeight: 19, fontWeight: '800' }}>{slice.sharePct}%</Txt>
+                    </View>
+                    <Txt style={{ flex: 1, fontWeight: '700' }}>{slice.name}</Txt>
+                  </View>
+                  <Txt variant="muted" color={t.text}>{slice.why}</Txt>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 2 }}>
+                    {ini > 0 ? <Txt variant="small">Do que você tem: <Txt variant="small" color={t.text} style={{ fontWeight: '700' }}>{formatBRL(ini)}</Txt></Txt> : null}
+                    {mon > 0 ? <Txt variant="small">Por mês: <Txt variant="small" color={t.text} style={{ fontWeight: '700' }}>{formatBRL(mon)}</Txt></Txt> : null}
+                    <Txt variant="small">No fim: <Txt variant="small" color={t.income} style={{ fontWeight: '800' }}>{formatBRL(netCents)}</Txt></Txt>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 7 }}>
+                    <Icon name="warning" size={13} color={t.warning} />
+                    <Txt variant="small" style={{ flex: 1 }}>{slice.caution}</Txt>
+                  </View>
+                  <Txt variant="small" style={{ fontSize: 11, lineHeight: 16 }}>Na conta: {slice.rateNote}.</Txt>
+                </View>
+              ))}
+            </Card>
+          </Appear>
+
+          {plan.warnings.length > 0 ? (
+            <Appear index={7}>
+              <Card style={{ borderColor: `${t.warning}66`, backgroundColor: `${t.warning}1C` }}>
+                <Txt variant="label" color={t.warning}>Papo reto</Txt>
+                {plan.warnings.map((w) => (
+                  <View key={w} style={{ flexDirection: 'row', gap: 9 }}>
+                    <Icon name="alert-circle" size={17} color={t.warning} />
+                    <Txt variant="muted" color={t.text} style={{ flex: 1 }}>{w}</Txt>
+                  </View>
+                ))}
+              </Card>
+            </Appear>
+          ) : null}
+
+          <Appear index={8}>
             <Card>
               <CardTitle
                 label="Com o tempo"
@@ -140,19 +284,19 @@ export default function Investir() {
                 hint="A faixa de baixo é o que saiu do seu bolso. A de cima é o que os juros fizeram sozinhos. Passa o dedo pra ver mês a mês."
               />
               <GrowthChart points={main.points} />
-              <View style={{ flexDirection: 'row', gap: 16 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 4 }}>
                 <Legend color={t.primary} label="O que você colocou" />
                 <Legend color={t.income} label="Total com juros" />
               </View>
             </Card>
           </Appear>
 
-          <Appear index={3}>
+          <Appear index={9}>
             <Card>
               <CardTitle
-                label="Onde render mais"
-                title="Comparando pelo líquido"
-                hint="Taxa de vitrine engana: o que importa é o que sobra depois do imposto."
+                label="Pra comparar"
+                title="Se fosse tudo num lugar só"
+                hint="O mesmo dinheiro inteiro em cada tipo, pelo que sobra depois do imposto. Taxa de vitrine engana."
               />
               {rows.map((row, i) => (
                 <ProductRow key={row.id} row={row} best={i === 0} />
@@ -160,7 +304,7 @@ export default function Investir() {
             </Card>
           </Appear>
 
-          <Appear index={4}>
+          <Appear index={10}>
             <Card>
               <CardTitle label="Pra não levar susto" title="O que mexe no resultado" />
               <Bullet>
@@ -190,20 +334,74 @@ export default function Investir() {
                 </Txt>
               </Bullet>
               <Txt variant="small" style={{ marginTop: 2 }}>
-                Isso aqui é uma simulação pra te ajudar a comparar, não é promessa de rendimento nem recomendação de
-                investimento. Rendimento passado não garante o futuro, e a taxa pode mudar no meio do caminho.
+                O caminho aqui de cima é o de manual pra esse tipo de objetivo, montado com as suas respostas. É conselho
+                de amigo e simulação, não recomendação profissional nem indicação de banco ou corretora, e não é promessa
+                de rendimento: a taxa muda no meio do caminho. Antes de aplicar, confere taxa, prazo e carência — e se
+                o valor for grande, fala com um profissional certificado.
               </Txt>
             </Card>
           </Appear>
         </>
-      ) : (
-        <Appear index={1}>
+      ) : plan ? (
+        <Appear index={5}>
           <Card>
             <Txt variant="muted">Preenche quanto você já tem ou quanto vai guardar por mês que eu faço a conta.</Txt>
           </Card>
         </Appear>
-      )}
+      ) : null}
     </Screen>
+  );
+}
+
+/** Número do passo + pergunta. */
+function StepTitle({ n, title, hint }: { n: number; title: string; hint?: string }) {
+  const t = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}>
+      <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: t.primary }}>
+        <Txt color={t.primaryText} style={{ fontSize: 13.5, lineHeight: 18, fontWeight: '800' }}>{n}</Txt>
+      </View>
+      <View style={{ flex: 1, gap: 1 }}>
+        <Txt variant="h2" style={{ lineHeight: 26 }}>{title}</Txt>
+        {hint ? <Txt variant="small">{hint}</Txt> : null}
+      </View>
+    </View>
+  );
+}
+
+/** Opção grande de uma pergunta: ícone, resposta e uma linha de apoio. */
+function Option({ icon, label, hint, selected, onPress, half }: { icon: string; label: string; hint: string; selected: boolean; onPress: () => void; half?: boolean }) {
+  const t = useTheme();
+  return (
+    <Press
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${label}. ${hint}`}
+      onPress={onPress}
+      style={half ? { flexBasis: '47%', flexGrow: 1 } : undefined}>
+      <View
+        style={{
+          flexDirection: half ? 'column' : 'row',
+          alignItems: half ? 'flex-start' : 'center',
+          gap: half ? 8 : 12,
+          padding: 12,
+          // Altura fixa nas opções em grade: senão cada uma fica de um tamanho.
+          minHeight: half ? 136 : undefined,
+          borderRadius: radius.md + 2,
+          borderWidth: 1.5,
+          borderColor: selected ? t.primary : t.border,
+          backgroundColor: selected ? t.soft : t.fieldBg,
+        }}>
+        <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: selected ? t.primary : t.soft }}>
+          <Icon name={icon} size={18} color={selected ? t.primaryText : t.primary} />
+        </View>
+        <View style={half ? { gap: 1 } : { flex: 1, gap: 1 }}>
+          <Txt style={{ fontWeight: '700', fontSize: 14, lineHeight: 19 }}>{label}</Txt>
+          <Txt variant="small" style={{ fontSize: 11.5, lineHeight: 16 }}>{hint}</Txt>
+        </View>
+        {!half && selected ? <Icon name="checkmark-circle" size={20} color={t.primary} /> : null}
+      </View>
+    </Press>
   );
 }
 
@@ -253,7 +451,7 @@ function ProductRow({ row, best }: { row: Comparison; best: boolean }) {
   );
 }
 
-function Bullet({ children }: { children: React.ReactNode }) {
+function Bullet({ children }: { children: ReactNode }) {
   const t = useTheme();
   return (
     <View style={{ flexDirection: 'row', gap: 8 }}>

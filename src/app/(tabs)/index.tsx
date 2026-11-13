@@ -191,21 +191,35 @@ export default function Painel() {
             <CardTitle
               label="Ritmo do mês"
               title="Você tá indo rápido?"
-              hint="A linha cheia é o que você já gastou. A tracejada é o ritmo que cabe no mês. Passa o dedo no gráfico pra ver dia a dia."
+              hint="Passa o dedo no gráfico pra ver dia a dia."
               right={
                 <View style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: `${paceDiff > 0 ? t.over : t.ok}26` }}>
                   <Txt color={paceDiff > 0 ? t.over : t.ok} style={{ fontSize: 11, lineHeight: 15, fontWeight: '800' }}>{paceDiff > 0 ? 'rápido demais' : 'no ritmo'}</Txt>
                 </View>
               }
             />
-            <SpendingPace points={pace} totalDays={daysInMonth(month)} />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Tile label={`Gasto até dia ${last.day}`} value={formatBRL(last.cumulativeCents)} color={paceDiff > 0 ? t.over : t.ok} drill={{ kind: 'expense' }} />
-              <Tile label="Ritmo ideal" value={formatBRL(last.paceCents)} color={t.muted} />
+            <SpendingPace points={pace} totalDays={daysInMonth(month)} projectedCents={summary.projectedExpenseCents} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 4 }}>
+              <LineKey color={paceDiff > 0 ? t.over : t.ok} label="O que você gastou" />
+              <LineKey color={t.muted} label="Ritmo que cabe" dash />
+              {summary.projectedExpenseCents !== null ? <LineKey color={summary.projectedExpenseCents > budgetCents ? t.over : t.ok} label="Pra onde vai" dots /> : null}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 7 }}>
+              <Tile label="Gasto" value={formatBRL(last.cumulativeCents).replace('R$ ', '')} color={paceDiff > 0 ? t.over : t.ok} drill={{ kind: 'expense' }} />
+              <Tile label="Ritmo ideal" value={formatBRL(last.paceCents).replace('R$ ', '')} color={t.muted} />
+              {summary.projectedExpenseCents !== null ? (
+                <Tile label="Previsão" value={formatBRL(summary.projectedExpenseCents).replace('R$ ', '')} color={summary.projectedExpenseCents > budgetCents ? t.over : t.ok} />
+              ) : null}
             </View>
             {summary.projectedExpenseCents !== null ? (
-              <Txt variant="small">Mantendo esse ritmo, o mês fecha em {formatBRL(summary.projectedExpenseCents)} de gasto.</Txt>
-            ) : null}
+              <Txt variant="small">
+                {summary.projectedExpenseCents > budgetCents
+                  ? `Do jeito que tá, o mês fecha ${formatBRL(summary.projectedExpenseCents - budgetCents)} acima do que cabe (${formatBRL(budgetCents)}). A previsão conta as contas fixas que ainda vão vencer.`
+                  : `Do jeito que tá, o mês fecha ${formatBRL(budgetCents - summary.projectedExpenseCents)} abaixo do que cabe (${formatBRL(budgetCents)}). Segue assim.`}
+              </Txt>
+            ) : (
+              <Txt variant="small">A previsão do fechamento aparece a partir do dia 5, quando já dá pra ver o ritmo.</Txt>
+            )}
           </Card>
         </Appear>
       ) : null}
@@ -418,6 +432,21 @@ function QuickAction({ icon, label, onPress }: { icon: string; label: string; on
         <Txt numberOfLines={1} style={{ fontSize: 11.5, lineHeight: 15, fontWeight: '700' }}>{label}</Txt>
       </View>
     </Press>
+  );
+}
+
+/** Legenda de uma linha do gráfico: cheia, tracejada ou pontilhada. */
+function LineKey({ color, label, dash, dots }: { color: string; label: string; dash?: boolean; dots?: boolean }) {
+  const pieces = dots ? [3, 3, 3] : dash ? [6, 6] : [16];
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: dots ? 3 : 4, width: 18 }}>
+        {pieces.map((w, i) => (
+          <View key={i} style={{ width: w, height: 3, borderRadius: 2, backgroundColor: color }} />
+        ))}
+      </View>
+      <Txt variant="small" style={{ fontSize: 11.5, lineHeight: 16 }}>{label}</Txt>
+    </View>
   );
 }
 
